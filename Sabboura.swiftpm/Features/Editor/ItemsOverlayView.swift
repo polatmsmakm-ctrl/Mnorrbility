@@ -22,6 +22,10 @@ final class ItemsOverlayView: UIView, UIGestureRecognizerDelegate {
     /// العنصر المحدد حالياً (يظهر عليه مقبض الحجم وزر الحذف).
     private(set) var selectedID: UUID?
 
+    /// طبقة العرض تحت الحبر: الصور والنصوص تُرسم هناك حتى تظهر الكتابة بالقلم فوقها،
+    /// وهذه الطبقة (فوق الحبر) شفافة وتتولى اللمس والتحديد والمقابض فقط.
+    weak var contentHost: UIView?
+
     private var itemViews: [UUID: ItemView] = [:]
     private var contentScale: CGFloat = 1
 
@@ -50,6 +54,7 @@ final class ItemsOverlayView: UIView, UIGestureRecognizerDelegate {
     func setItems(_ placed: [PlacedItem], images: [UUID: UIImage], dark: Bool) {
         let incoming = Set(placed.map(\.id))
         for (id, view) in itemViews where !incoming.contains(id) {
+            view.mirror.removeFromSuperview()
             view.removeFromSuperview()
             itemViews[id] = nil
         }
@@ -69,6 +74,9 @@ final class ItemsOverlayView: UIView, UIGestureRecognizerDelegate {
                 addSubview(view)
                 itemViews[entry.id] = view
             }
+            if let contentHost, view.mirror.superview !== contentHost {
+                contentHost.addSubview(view.mirror)
+            }
             let image = entry.item.attachmentID.flatMap { images[$0] }
             view.configure(entry.item, frame: entry.canvasFrame, image: image, dark: dark)
             view.updateContentScale(contentScale)
@@ -78,7 +86,10 @@ final class ItemsOverlayView: UIView, UIGestureRecognizerDelegate {
 
     func select(_ id: UUID?) {
         selectedID = id
-        if let id, let view = itemViews[id] { bringSubviewToFront(view) }
+        if let id, let view = itemViews[id] {
+            bringSubviewToFront(view)
+            view.mirror.superview?.bringSubviewToFront(view.mirror)
+        }
         refreshSelection()
     }
 
@@ -124,8 +135,8 @@ final class ItemView: UIView, UIGestureRecognizerDelegate {
     var onBeganInteraction: ((UUID) -> Void)?
     var onDelete: ((UUID) -> Void)?
 
-    private let label = UILabel()
-    private let imageView = UIImageView()
+    /// ما يُعرض فعلياً (تحت الحبر)
+    let mirror = ItemMirrorView()
     private let outline = CAShapeLayer()
     private let resizeHandle = UIView()
     private let deleteButton = UIButton(type: .custom)
@@ -148,14 +159,7 @@ final class ItemView: UIView, UIGestureRecognizerDelegate {
 
     override init(frame: CGRect) {
         super.init(frame: frame)
-        label.numberOfLines = 0
-        label.lineBreakMode = .byWordWrapping
-        imageView.contentMode = .scaleAspectFit
-        imageView.clipsToBounds = true
-        imageView.layer.cornerRadius = 2
-        addSubview(imageView)
-        addSubview(label)
-
+        backgroundColor = .clear
         outline.fillColor = UIColor.clear.cgColor
         outline.strokeColor = UIColor.systemBlue.withAlphaComponent(0.8).cgColor
         outline.lineWidth = 1.5
@@ -218,27 +222,20 @@ final class ItemView: UIView, UIGestureRecognizerDelegate {
         aspectRatio = frame.height / max(frame.width, 1)
         accessibilityIdentifier = item.kind == .text ? "textItem" : "imageItem"
         accessibilityLabel = item.kind == .text ? item.text : "صورة"
-        switch item.kind {
-        case .text:
-            label.isHidden = false
-            imageView.isHidden = true
-            label.font = item.font
-            label.textColor = ItemRenderer.displayColor(item.colorHex, dark: dark)
-            label.text = item.text
-            label.textAlignment = .natural
-        case .image:
-            label.isHidden = true
-            imageView.isHidden = false
-            imageView.image = image
-        }
+        mirror.configure(item, image: image, dark: dark)
+        syncMirror()
         setNeedsLayout()
+    }
+
+    /// يطابق موضع العرض تحت الحبر مع هذا العنصر (الطبقتان بنفس الإحداثيات).
+    private func syncMirror() {
+        mirror.bounds = bounds
+        mirror.center = center
     }
 
     func updateContentScale(_ scale: CGFloat) {
         contentScale = max(scale, 0.05)
-        let screenScale = window?.screen.scale ?? 2
-        label.layer.contentsScale = screenScale * max(1, scale)
-        label.setNeedsDisplay()
+        mirror.updateContentScale(scale, screenScale: window?.screen.scale ?? 2)
         // المقابض بحجم ثابت على الشاشة مهما كان التكبير
         let inverse = CGAffineTransform(scaleX: 1 / contentScale, y: 1 / contentScale)
         resizeHandle.transform = inverse
@@ -248,8 +245,7 @@ final class ItemView: UIView, UIGestureRecognizerDelegate {
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        label.frame = bounds.insetBy(dx: 0, dy: 2)
-        imageView.frame = bounds
+        syncMirror()
         outline.path = UIBezierPath(roundedRect: bounds.insetBy(dx: -3, dy: -3), cornerRadius: 4).cgPath
         resizeHandle.center = CGPoint(x: bounds.maxX, y: bounds.maxY)
         deleteButton.center = CGPoint(x: bounds.minX, y: bounds.minY)
@@ -308,6 +304,7 @@ final class ItemView: UIView, UIGestureRecognizerDelegate {
         case .changed:
             let translation = gesture.translation(in: superview)
             center = CGPoint(x: panStartCenter.x + translation.x, y: panStartCenter.y + translation.y)
+            syncMirror()
         case .ended, .cancelled:
             if let itemID { onMoved?(itemID, frame) }
         default:
@@ -334,6 +331,7 @@ final class ItemView: UIView, UIGestureRecognizerDelegate {
                 size.width = max(60, resizeStartFrame.width + translation.x)
             }
             frame = CGRect(origin: resizeStartFrame.origin, size: size)
+            syncMirror()
             setNeedsLayout()
         case .ended, .cancelled:
             if let itemID { onMoved?(itemID, frame) }
@@ -355,10 +353,62 @@ final class ItemView: UIView, UIGestureRecognizerDelegate {
             let oldCenter = center
             bounds = CGRect(origin: .zero, size: newSize)
             center = oldCenter
+            syncMirror()
         case .ended, .cancelled:
             if let itemID { onMoved?(itemID, frame) }
         default:
             break
         }
+    }
+}
+
+/// عرض العنصر نفسه (صورة أو نص) في الطبقة التي تحت الحبر.
+final class ItemMirrorView: UIView {
+    private let label = UILabel()
+    private let imageView = UIImageView()
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        isUserInteractionEnabled = false
+        backgroundColor = .clear
+        label.numberOfLines = 0
+        label.lineBreakMode = .byWordWrapping
+        imageView.contentMode = .scaleAspectFit
+        imageView.clipsToBounds = true
+        imageView.layer.cornerRadius = 2
+        addSubview(imageView)
+        addSubview(label)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) is not supported")
+    }
+
+    func configure(_ item: PageItem, image: UIImage?, dark: Bool) {
+        switch item.kind {
+        case .text:
+            label.isHidden = false
+            imageView.isHidden = true
+            label.font = item.font
+            label.textColor = ItemRenderer.displayColor(item.colorHex, dark: dark)
+            label.text = item.text
+            label.textAlignment = .natural
+        case .image:
+            label.isHidden = true
+            imageView.isHidden = false
+            imageView.image = image
+        }
+        setNeedsLayout()
+    }
+
+    func updateContentScale(_ scale: CGFloat, screenScale: CGFloat) {
+        label.layer.contentsScale = screenScale * max(1, scale)
+        label.setNeedsDisplay()
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        label.frame = bounds.insetBy(dx: 0, dy: 2)
+        imageView.frame = bounds
     }
 }

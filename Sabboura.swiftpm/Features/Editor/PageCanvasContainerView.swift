@@ -10,6 +10,8 @@ import UIKit
 final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInteractionDelegate {
     let canvas = PKCanvasView()
     let itemsOverlay = ItemsOverlayView(frame: .zero)
+    /// الصور والنصوص تُعرض هنا (فوق الخلفية وتحت الحبر) حتى تكتب فوقها بالقلم
+    private let itemsContentView = UIView()
 
     var onDrawingChanged: (() -> Void)?
     var onZoomChanged: ((CGFloat) -> Void)?
@@ -90,6 +92,10 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
         addSubview(canvas)
 
         canvas.insertSubview(backgroundView, at: 0)
+        itemsContentView.isUserInteractionEnabled = false
+        itemsContentView.backgroundColor = .clear
+        canvas.insertSubview(itemsContentView, aboveSubview: backgroundView)
+        itemsOverlay.contentHost = itemsContentView
         canvas.addSubview(itemsOverlay)
 
         lassoLayer.fillColor = UIColor(red: 0.86, green: 0.15, blue: 0.15, alpha: 0.08).cgColor
@@ -348,7 +354,7 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         let extentBounds = CGRect(origin: .zero, size: contentExtent)
-        for view in [backgroundView as UIView, itemsOverlay as UIView] {
+        for view in [backgroundView as UIView, itemsContentView, itemsOverlay as UIView] {
             if view.bounds != extentBounds { view.bounds = extentBounds }
             view.transform = CGAffineTransform(scaleX: zoom, y: zoom)
             view.center = CGPoint(x: scaled.width / 2, y: scaled.height / 2)
@@ -364,6 +370,7 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
         }
 
         canvas.sendSubviewToBack(backgroundView)
+        canvas.insertSubview(itemsContentView, aboveSubview: backgroundView)
         canvas.bringSubviewToFront(itemsOverlay)
     }
 
