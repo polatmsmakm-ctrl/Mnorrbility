@@ -10,6 +10,8 @@ enum AppEnvironment {
     static let resetData = arguments.contains("-uitest-reset")
     /// استيراد ملف PDF تجريبي تلقائياً عند فتح مذكرة (للاختبار).
     static let importSamplePDF = arguments.contains("-uitest-import-pdf")
+    /// إدراج صورة تجريبية عند فتح مذكرة (للاختبار).
+    static let insertSampleImage = arguments.contains("-uitest-insert-image")
     /// إجبار الثيم الداكن (للاختبار).
     static let forceDark = arguments.contains("-uitest-dark")
     /// ثيم محدد للاختبار: -uitest-theme jetBlack

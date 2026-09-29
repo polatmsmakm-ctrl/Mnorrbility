@@ -233,14 +233,18 @@ final class SabbouraUITests: XCTestCase {
 
     /// استيراد PDF كصفحات للكتابة عليها (وضع داكن مع عكس ألوان PDF) + المرفقات + المعرض.
     func test3_PDFImport() {
-        launch(reset: true, extra: ["-uitest-import-pdf", "-uitest-dark", "-uitest-theme", "darkBlue"])
+        launch(reset: true, extra: ["-uitest-import-pdf", "-uitest-insert-image", "-uitest-dark", "-uitest-theme", "darkBlue"])
         openFolder()
         newNote()
         let canvas = canvasElement()
         XCTAssertTrue(canvas.waitForExistence(timeout: 10))
         XCTAssertTrue(waitForLabel(app.buttons["pageCounter"], contains: "/ 3", timeout: 12), "صفحات PDF لم تُستورد")
+        // صورة داخل صفحة الـPDF
+        XCTAssertTrue(app.descendants(matching: .any)["imageItem"].firstMatch.waitForExistence(timeout: 8),
+                      "الصورة لم تُدرج في صفحة PDF")
         sleep(5)
         snap("30-pdf-dark")
+        tap(app.buttons["tool.pen"], "tool.pen")
         drawZigzag(on: canvas, row: rowBase + 0.3)
         tap(app.buttons["tool.marker"], "marker")
         drawLine(on: canvas, from: CGVector(dx: 0.15, dy: rowBase + 0.1), to: CGVector(dx: 0.7, dy: rowBase + 0.1))
@@ -362,6 +366,54 @@ final class SabbouraUITests: XCTestCase {
         tap(app.buttons["undo"], "undo tidy")
         tap(app.buttons["tool.pen"], "tool.pen")
         assertAppAlive("الأشكال الذكية وترتيب الخط")
+    }
+
+    /// الصور داخل المذكرة: إدراج، تكبير بالمقبض، تحريك، تراجع، حذف، كتابة فوقها، وتصدير.
+    func test7_Images() {
+        launch(reset: true, extra: ["-uitest-dark", "-uitest-insert-image"])
+        openFolder()
+        newNote()
+        let image = app.descendants(matching: .any)["imageItem"].firstMatch
+        XCTAssertTrue(image.waitForExistence(timeout: 10), "الصورة لم تُدرج")
+        sleep(2)
+        snap("70-image-inserted")
+
+        let handle = app.descendants(matching: .any)["resizeHandle"].firstMatch
+        XCTAssertTrue(handle.waitForExistence(timeout: 4), "مقبض تغيير الحجم لم يظهر")
+        let before = image.frame
+        let grab = handle.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        grab.press(forDuration: 0.2, thenDragTo: grab.withOffset(CGVector(dx: before.width * 0.3, dy: before.height * 0.3)))
+        sleep(1)
+        let resized = image.frame
+        XCTAssertGreaterThan(resized.width, before.width + 10, "تغيير حجم الصورة لم ينجح")
+        snap("71-image-resized")
+
+        let middle = image.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        middle.press(forDuration: 0.2, thenDragTo: middle.withOffset(CGVector(dx: -30, dy: 90)))
+        sleep(1)
+        XCTAssertGreaterThan(image.frame.minY, resized.minY + 40, "تحريك الصورة لم ينجح")
+        snap("72-image-moved")
+
+        tap(app.buttons["undo"], "undo move")
+        sleep(1)
+        XCTAssertEqual(image.frame.minY, resized.minY, accuracy: 8, "التراجع عن تحريك الصورة لم ينجح")
+
+        tap(app.buttons["deleteItem"], "deleteItem")
+        XCTAssertTrue(image.waitForNonExistence(timeout: 4), "حذف الصورة لم ينجح")
+        tap(app.buttons["undo"], "undo delete")
+        XCTAssertTrue(app.descendants(matching: .any)["imageItem"].firstMatch.waitForExistence(timeout: 4),
+                      "التراجع عن حذف الصورة لم ينجح")
+
+        tap(app.buttons["tool.pen"], "tool.pen")
+        drawZigzag(on: canvasElement(), row: rowBase + 0.12)
+        sleep(1)
+        snap("73-image-annotated")
+
+        tap(app.buttons["exportMenu"], "exportMenu")
+        tap(app.buttons["المذكرة كاملة PDF"], "export pdf")
+        waitForShareSheet()
+        dismissShareSheet()
+        assertAppAlive("الصور")
     }
 
     // MARK: - أدوات مساعدة

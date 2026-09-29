@@ -8,6 +8,8 @@
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>يستخدم Mnorrbility الميكروفون لتسجيل الشرح الصوتي داخل ملاحظاتك.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>يستخدم Mnorrbility الكاميرا لتصوير صورة وإدراجها داخل ملاحظاتك.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>يستخدم Mnorrbility الصور لإدراجها داخل ملاحظاتك.</string>
 	<key>CFBundleDocumentTypes</key>

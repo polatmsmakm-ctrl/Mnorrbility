@@ -10,12 +10,16 @@ struct EditorView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.appTheme) private var theme
 
+    /// ماذا نفعل بالملفات المختارة من تطبيق الملفات
+    private enum FileImportMode { case pdfPages, attachment, images }
+
     @State private var showFileImporter = false
-    @State private var fileImportAsPDFPages = false
+    @State private var fileImportMode: FileImportMode = .attachment
     @State private var pendingFiles: [ImportedFile] = []
     @State private var showImportChoice = false
     @State private var showPhotoPicker = false
-    @State private var photoItem: PhotosPickerItem? = nil
+    @State private var photoItems: [PhotosPickerItem] = []
+    @State private var showCamera = false
     @State private var showAttachments = false
     @State private var showPages = false
     @State private var showRename = false
@@ -60,23 +64,48 @@ struct EditorView: View {
         .toolbar(.hidden, for: .navigationBar)
         .navigationBarBackButtonHidden(true)
         .fileImporter(isPresented: $showFileImporter,
-                      allowedContentTypes: fileImportAsPDFPages ? [.pdf, .image] : [.item],
+                      allowedContentTypes: allowedImportTypes,
                       allowsMultipleSelection: true) { result in
             handleImport(result)
         }
-        .photosPicker(isPresented: $showPhotoPicker, selection: $photoItem, matching: .images)
-        .onChange(of: photoItem) { _, item in
-            guard let item else { return }
-            item.loadTransferable(type: Data.self) { result in
-                DispatchQueue.main.async {
-                    if case .success(let data?) = result {
-                        controller.insertImage(data)
+        .photosPicker(isPresented: $showPhotoPicker, selection: $photoItems, maxSelectionCount: 10,
+                      matching: .images)
+        .onChange(of: photoItems) { _, items in
+            guard !items.isEmpty else { return }
+            Task {
+                var datas: [Data] = []
+                for item in items {
+                    if let data = try? await item.loadTransferable(type: Data.self) {
+                        datas.append(data)
                     }
-                    photoItem = nil
+                }
+                await MainActor.run {
+                    controller.insertImages(datas)
+                    photoItems = []
                 }
             }
         }
+        .fullScreenCover(isPresented: $showCamera) {
+            CameraPicker(onImage: { image in
+                if let data = image.jpegData(compressionQuality: 0.9) {
+                    // بعد إغلاق الكاميرا حتى يُحسب وسط الصفحة الظاهر بشكل صحيح
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        controller.insertImages([data])
+                    }
+                }
+            }, onClose: { showCamera = false })
+            .ignoresSafeArea()
+        }
         .confirmationDialog("كيف تريد إدراج الملف؟", isPresented: $showImportChoice, titleVisibility: .visible) {
+            if pendingFiles.contains(where: { $0.isImage }) {
+                Button("كصورة داخل الصفحة") {
+                    let images = pendingFiles.filter { $0.isImage }
+                    let others = pendingFiles.filter { !$0.isImage }
+                    controller.insertImages(images.map(\.data))
+                    if !others.isEmpty { controller.importFiles(others, asPages: true) }
+                    pendingFiles = []
+                }
+            }
             Button("كصفحات يمكن الكتابة فوقها") {
                 controller.importFiles(pendingFiles, asPages: true)
                 pendingFiles = []
@@ -147,6 +176,8 @@ struct EditorView: View {
                     Spacer(minLength: 8)
                     FloatingToolbar(controller: controller,
                                     onInsertImage: { showPhotoPicker = true },
+                                    onTakePhoto: { takePhoto() },
+                                    onImageFromFiles: { imageFromFiles() },
                                     onImportPDF: { importPDF() },
                                     onImportFile: { importFile() })
                         .frame(maxWidth: 560)
@@ -171,6 +202,8 @@ struct EditorView: View {
                 }
                 FloatingToolbar(controller: controller,
                                 onInsertImage: { showPhotoPicker = true },
+                                onTakePhoto: { takePhoto() },
+                                onImageFromFiles: { imageFromFiles() },
                                 onImportPDF: { importPDF() },
                                 onImportFile: { importFile() })
                 toastView
@@ -401,20 +434,43 @@ struct EditorView: View {
 
     // MARK: إجراءات
 
+    private var allowedImportTypes: [UTType] {
+        switch fileImportMode {
+        case .pdfPages: return [.pdf, .image]
+        case .attachment: return [.item]
+        case .images: return [.image]
+        }
+    }
+
     private func importPDF() {
-        fileImportAsPDFPages = true
+        fileImportMode = .pdfPages
         showFileImporter = true
     }
 
     private func importFile() {
-        fileImportAsPDFPages = false
+        fileImportMode = .attachment
         showFileImporter = true
+    }
+
+    private func imageFromFiles() {
+        fileImportMode = .images
+        showFileImporter = true
+    }
+
+    private func takePhoto() {
+        guard UIImagePickerController.isSourceTypeAvailable(.camera) else {
+            controller.showToast("الكاميرا غير متاحة على هذا الجهاز")
+            return
+        }
+        showCamera = true
     }
 
     private func handleImport(_ result: Result<[URL], Error>) {
         let files = FileImportReader.read(result)
         guard !files.isEmpty else { return }
-        if fileImportAsPDFPages {
+        if fileImportMode == .images {
+            controller.insertImages(files.map(\.data))
+        } else if fileImportMode == .pdfPages {
             controller.importFiles(files, asPages: true)
         } else if files.contains(where: { $0.isPDF || $0.isImage }) {
             pendingFiles = files
@@ -521,5 +577,44 @@ struct ItemEditorSheet: View {
         }
         .presentationDetents([.medium, .large])
         .environment(\.layoutDirection, .rightToLeft)
+    }
+}
+
+// MARK: - الكاميرا
+
+/// التقاط صورة بالكاميرا لإدراجها في الصفحة.
+struct CameraPicker: UIViewControllerRepresentable {
+    var onImage: (UIImage) -> Void
+    var onClose: () -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = .camera
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ controller: UIImagePickerController, context: Context) {}
+
+    final class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let parent: CameraPicker
+
+        init(_ parent: CameraPicker) {
+            self.parent = parent
+        }
+
+        func imagePickerController(_ picker: UIImagePickerController,
+                                   didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+            if let image = info[.originalImage] as? UIImage {
+                parent.onImage(image)
+            }
+            parent.onClose()
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            parent.onClose()
+        }
     }
 }

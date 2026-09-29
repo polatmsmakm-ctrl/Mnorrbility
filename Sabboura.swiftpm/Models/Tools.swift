@@ -36,7 +36,7 @@ enum ToolKind: String, CaseIterable, Codable, Identifiable {
         case .watercolor: return "ألوان مائية"
         case .eraser: return "الممحاة"
         case .lasso: return "التحديد الحر"
-        case .text: return "النص"
+        case .text: return "النص والصور"
         case .tidy: return "ترتيب الخط"
         }
     }

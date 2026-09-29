@@ -143,6 +143,7 @@ final class EditorController: ObservableObject {
         view.itemsOverlay.onTapEmpty = { [weak self] point in self?.createTextItem(at: point) }
         view.itemsOverlay.onTapItem = { [weak self] id in self?.editItem(id) }
         view.itemsOverlay.onItemFrameChanged = { [weak self] id, frame in self?.moveItem(id, to: frame) }
+        view.itemsOverlay.onDeleteItem = { [weak self] id in self?.deleteItem(id: id) }
         view.apply(canvasToolState)
         rebuildCanvas(scrollTo: currentIndex)
     }
@@ -417,7 +418,7 @@ final class EditorController: ObservableObject {
         tools.kind = kind
         if kind.isInk { tools.lastInkKind = kind }
         if kind == .text {
-            showToast("انقر على الصفحة لإضافة نص، واسحب العناصر لنقلها")
+            showToast("انقر على الصفحة لإضافة نص — واسحب الصور والنصوص لتحريكها")
         } else if kind == .tidy {
             showToast("ارسم دائرة حول الكتابة لترتيبها — اضغط الأداة مرة ثانية للخيارات")
         }
@@ -666,6 +667,7 @@ final class EditorController: ObservableObject {
             }
             item.fitTextHeight()
         }
+        let before = [(page, page.items)]
         var items = page.items
         if let index = items.firstIndex(where: { $0.id == item.id }) {
             items[index] = item
@@ -673,32 +675,27 @@ final class EditorController: ObservableObject {
             items.append(item)
         }
         page.items = items
-        note.updatedAt = Date()
-        DataStore.save(context)
-        refreshItems()
+        commitItemChange(before, actionName: item.kind == .text ? "نص" : "صورة")
     }
 
     func deleteItem(_ target: ItemEditTarget) {
-        guard let page = page(withID: target.pageID) else { return }
-        page.items = page.items.filter { $0.id != target.item.id }
-        note.updatedAt = Date()
-        DataStore.save(context)
-        refreshItems()
+        deleteItem(id: target.item.id)
     }
 
-    /// عنصر سُحب إلى مكان جديد (قد ينتقل لصفحة أخرى في وضع التمرير المتصل).
+    /// حذف نص أو صورة (يمكن التراجع عنه بزر التراجع).
+    func deleteItem(id: UUID) {
+        guard let page = layoutPages.first(where: { $0.isAlive && $0.items.contains(where: { $0.id == id }) }) else { return }
+        let before = [(page, page.items)]
+        let wasImage = page.items.first(where: { $0.id == id })?.kind == .image
+        page.items = page.items.filter { $0.id != id }
+        commitItemChange(before, actionName: "حذف")
+        showToast(wasImage ? "حُذفت الصورة — تقدر تتراجع" : "حُذف النص — تقدر تتراجع")
+    }
+
+    /// عنصر سُحب أو تغيّر حجمه (قد ينتقل لصفحة أخرى في وضع التمرير المتصل).
     private func moveItem(_ id: UUID, to canvasFrame: CGRect) {
-        var sourcePage: CDPage?
-        var item: PageItem?
-        for (info, page) in zip(layout, layoutPages) where page.isAlive {
-            if let found = page.items.first(where: { $0.id == id }) {
-                sourcePage = page
-                item = found
-                _ = info
-                break
-            }
-        }
-        guard let sourcePage, var moved = item else { return }
+        guard let sourcePage = layoutPages.first(where: { $0.isAlive && $0.items.contains(where: { $0.id == id }) }),
+              var moved = sourcePage.items.first(where: { $0.id == id }) else { return }
         let targetIndex = layoutIndex(forY: canvasFrame.midY)
         guard layoutPages.indices.contains(targetIndex) else { return }
         let target = layoutPages[targetIndex]
@@ -707,46 +704,126 @@ final class EditorController: ObservableObject {
         local.origin.x = min(max(local.origin.x, -local.width * 0.5), info.size.width - local.width * 0.5)
         local.origin.y = min(max(local.origin.y, -local.height * 0.5), info.size.height - local.height * 0.5)
         moved.frame = local
+        if moved.kind == .text { moved.fitTextHeight() }
 
+        var before = [(sourcePage, sourcePage.items)]
+        if target !== sourcePage { before.append((target, target.items)) }
         sourcePage.items = sourcePage.items.filter { $0.id != id }
         target.items = target.items + [moved]
-        note.updatedAt = Date()
-        DataStore.save(context)
-        refreshItems()
+        commitItemChange(before, actionName: "نقل")
+        canvasView?.itemsOverlay.select(id)
     }
 
-    /// يدرج صورة كعنصر قابل للتحريك في الصفحة الحالية.
-    func insertImage(_ data: Data) {
-        guard note.isAlive, let original = UIImage(data: data),
-              let info = layout.first(where: { $0.index == currentIndex }) ?? layout.first,
-              let page = page(withID: info.id) else { return }
-        let image = Self.downscale(original, maxDimension: 2000)
-        guard let jpeg = image.jpegData(compressionQuality: 0.85) else { return }
-        let attachment = DataStore.addAttachment(data: jpeg, fileName: "صورة.jpg", typeIdentifier: UTType.jpeg.identifier,
-                                                 isPageSource: false, to: note, context: context)
-        guard let attachmentID = attachment.uuid else { return }
-        ImageStore.shared.store(image, for: attachmentID)
-        let width = min(info.size.width * 0.6, image.size.width)
-        let height = width * image.size.height / max(image.size.width, 1)
-        var item = PageItem(kind: .image, x: 0, y: 0, width: Double(width), height: Double(height))
-        item.x = Double((info.size.width - width) / 2)
-        item.y = Double(max(40, min(info.size.height - height - 40, info.size.height * 0.15)))
-        item.attachmentID = attachmentID
-        page.items = page.items + [item]
+    // MARK: - التراجع عن تعديلات النصوص والصور
+
+    /// يحفظ التعديل ويسجّل خطوة تراجع في نفس سجل الكتابة (زر التراجع يشمل الصور والنصوص).
+    private func commitItemChange(_ before: [(CDPage, [PageItem])], actionName: String) {
+        let after = before.map { ($0.0, $0.0.items) }
         note.updatedAt = Date()
         DataStore.save(context)
         refreshItems()
+        registerItemsUndo(restore: before, redo: after, actionName: actionName)
+    }
+
+    private func registerItemsUndo(restore: [(CDPage, [PageItem])], redo: [(CDPage, [PageItem])], actionName: String) {
+        guard let undoManager = canvasView?.itemsUndoManager else { return }
+        undoManager.registerUndo(withTarget: self) { target in
+            for (page, items) in restore where page.isAlive {
+                page.items = items
+            }
+            target.note.updatedAt = Date()
+            DataStore.save(target.context)
+            target.refreshItems()
+            target.registerItemsUndo(restore: redo, redo: restore, actionName: actionName)
+        }
+        undoManager.setActionName(actionName)
+        DispatchQueue.main.async { [weak self] in self?.refreshUndoState() }
+    }
+
+    // MARK: - الصور داخل الصفحات
+
+    /// يدرج صورة كعنصر قابل للتحريك في الصفحة الظاهرة.
+    func insertImage(_ data: Data) {
+        insertImages([data])
+    }
+
+    /// يدرج صورة أو أكثر في وسط الجزء الظاهر من الصفحة (مذكرة عادية أو صفحة PDF).
+    func insertImages(_ datas: [Data]) {
+        guard note.isAlive, !datas.isEmpty, let view = canvasView, !layout.isEmpty else { return }
+        let center = view.visibleContentCenter
+        let index = layoutIndex(forY: center.y)
+        guard layoutPages.indices.contains(index) else { return }
+        let info = layout[index]
+        let page = layoutPages[index]
+        guard page.isAlive else { return }
+
+        let before = [(page, page.items)]
+        var items = page.items
+        var lastID: UUID?
+        let localCenterY = min(max(center.y - info.originY, info.size.height * 0.2), info.size.height * 0.8)
+        let localCenterX = min(max(center.x, info.size.width * 0.25), info.size.width * 0.75)
+
+        for data in datas {
+            guard let original = UIImage(data: data) else { continue }
+            let image = Self.prepared(original, maxDimension: 2000)
+            guard let jpeg = image.jpegData(compressionQuality: 0.85) else { continue }
+            let attachment = DataStore.addAttachment(data: jpeg, fileName: "صورة.jpg",
+                                                     typeIdentifier: UTType.jpeg.identifier,
+                                                     isPageSource: false, to: note, context: context)
+            guard let attachmentID = attachment.uuid else { continue }
+            ImageStore.shared.store(image, for: attachmentID)
+
+            let aspect = image.size.height / max(image.size.width, 1)
+            var width = min(info.size.width * (datas.count > 1 ? 0.45 : 0.6), max(image.size.width, 120))
+            var height = width * aspect
+            if height > info.size.height * 0.55 {
+                height = info.size.height * 0.55
+                width = height / max(aspect, 0.01)
+            }
+            let offset = CGFloat(items.count - before[0].1.count) * 28
+            var item = PageItem(kind: .image, x: 0, y: 0, width: Double(width), height: Double(height))
+            item.x = Double(min(max(localCenterX - width / 2 + offset, 8), info.size.width - width - 8))
+            item.y = Double(min(max(localCenterY - height / 2 + offset, 8), info.size.height - height - 8))
+            item.attachmentID = attachmentID
+            items.append(item)
+            lastID = item.id
+        }
+
+        let added = items.count - before[0].1.count
+        guard added > 0 else {
+            showToast("تعذّر قراءة الصورة")
+            return
+        }
+        page.items = items
+        commitItemChange(before, actionName: added > 1 ? "إدراج صور" : "إدراج صورة")
         if tools.kind != .text {
             tools.previousKind = tools.kind
             tools.kind = .text
         }
-        showToast("أُضيفت الصورة — اسحبها لتحريكها وقرّب إصبعين لتكبيرها")
+        // التحديد بعد تطبيق أداة «النص والصور» على اللوحة
+        DispatchQueue.main.async { [weak self] in
+            self?.canvasView?.itemsOverlay.select(lastID)
+        }
+        showToast(added > 1
+                  ? "أُضيفت \(added) صور — اسحب أي صورة لتحريكها، والمقبض الأزرق لتكبيرها"
+                  : "أُضيفت الصورة — اسحبها لتحريكها، والمقبض الأزرق لتكبيرها")
     }
 
-    private static func downscale(_ image: UIImage, maxDimension: CGFloat) -> UIImage {
+    /// لصق صورة منسوخة (من الصور أو المتصفح أو لقطة شاشة).
+    func pasteImage() {
+        let board = UIPasteboard.general
+        guard board.hasImages, let images = board.images, !images.isEmpty else {
+            showToast("ما فيه صورة منسوخة — انسخ صورة أولاً ثم الصقها هنا")
+            return
+        }
+        insertImages(images.compactMap { $0.pngData() })
+    }
+
+    /// يصغّر الصورة الكبيرة ويثبّت اتجاهها (صور الكاميرا تحمل اتجاهاً مخزّناً).
+    private static func prepared(_ image: UIImage, maxDimension: CGFloat) -> UIImage {
         let longest = max(image.size.width, image.size.height)
-        guard longest > maxDimension else { return image }
-        let factor = maxDimension / longest
+        guard longest > maxDimension || image.imageOrientation != .up else { return image }
+        let factor = min(1, maxDimension / longest)
         let size = CGSize(width: image.size.width * factor, height: image.size.height * factor)
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1
@@ -851,10 +928,33 @@ final class EditorController: ObservableObject {
 
     /// للاختبار الآلي فقط: يستورد ملف PDF تجريبياً مرة واحدة.
     func runTestImportIfNeeded() {
-        guard AppEnvironment.importSamplePDF, !didRunTestImport else { return }
+        guard AppEnvironment.importSamplePDF || AppEnvironment.insertSampleImage, !didRunTestImport else { return }
         didRunTestImport = true
-        let file = ImportedFile(name: "Sample.pdf", data: DataStore.samplePDF(), typeIdentifier: UTType.pdf.identifier)
-        importFiles([file], asPages: true)
+        if AppEnvironment.importSamplePDF {
+            let file = ImportedFile(name: "Sample.pdf", data: DataStore.samplePDF(), typeIdentifier: UTType.pdf.identifier)
+            importFiles([file], asPages: true)
+        }
+        if AppEnvironment.insertSampleImage {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
+                self?.insertImages([Self.sampleImageData()])
+            }
+        }
+    }
+
+    /// صورة تجريبية لاختبارات الواجهة.
+    private static func sampleImageData() -> Data {
+        let size = CGSize(width: 600, height: 400)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        let image = UIGraphicsImageRenderer(size: size, format: format).image { context in
+            UIColor(red: 0.98, green: 0.85, blue: 0.55, alpha: 1).setFill()
+            context.fill(CGRect(origin: .zero, size: size))
+            UIColor(red: 0.2, green: 0.5, blue: 0.9, alpha: 1).setFill()
+            UIBezierPath(ovalIn: CGRect(x: 60, y: 60, width: 220, height: 220)).fill()
+            UIColor(red: 0.85, green: 0.25, blue: 0.3, alpha: 1).setFill()
+            UIBezierPath(roundedRect: CGRect(x: 320, y: 120, width: 220, height: 200), cornerRadius: 24).fill()
+        }
+        return image.pngData() ?? Data()
     }
 
     // MARK: - المفضلة والاسم

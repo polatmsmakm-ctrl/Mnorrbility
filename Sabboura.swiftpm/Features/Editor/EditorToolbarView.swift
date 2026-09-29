@@ -6,6 +6,8 @@ import SwiftUI
 struct FloatingToolbar: View {
     @ObservedObject var controller: EditorController
     var onInsertImage: () -> Void
+    var onTakePhoto: () -> Void
+    var onImageFromFiles: () -> Void
     var onImportPDF: () -> Void
     var onImportFile: () -> Void
 
@@ -56,11 +58,31 @@ struct FloatingToolbar: View {
 
     private var insertMenu: some View {
         Menu {
-            Button {
-                onInsertImage()
-            } label: {
-                Label("صورة من الصور", systemImage: "photo")
+            Section("صور داخل الصفحة") {
+                Button {
+                    onInsertImage()
+                } label: {
+                    Label("صورة من الصور", systemImage: "photo.on.rectangle")
+                }
+                if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                    Button {
+                        onTakePhoto()
+                    } label: {
+                        Label("التقاط صورة بالكاميرا", systemImage: "camera")
+                    }
+                }
+                Button {
+                    onImageFromFiles()
+                } label: {
+                    Label("صورة من الملفات", systemImage: "folder")
+                }
+                Button {
+                    controller.pasteImage()
+                } label: {
+                    Label("لصق صورة منسوخة", systemImage: "doc.on.clipboard")
+                }
             }
+            Divider()
             Button {
                 onImportPDF()
             } label: {

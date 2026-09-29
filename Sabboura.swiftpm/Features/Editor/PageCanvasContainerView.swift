@@ -155,6 +155,19 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
     }
 
     var currentDrawing: PKDrawing { canvas.drawing }
+
+    /// سجل التراجع المشترك بين الكتابة والنصوص والصور.
+    var itemsUndoManager: UndoManager? { canvas.undoManager }
+
+    /// وسط الجزء الظاهر من الصفحات (بإحداثيات الرسم) — مكان إدراج الصور.
+    var visibleContentCenter: CGPoint {
+        let zoom = max(canvas.zoomScale, 0.0001)
+        let visibleTop = canvas.contentOffset.y + canvas.contentInset.top
+        let visibleHeight = max(1, canvas.bounds.height - canvas.contentInset.top - bottomInset)
+        let x = (canvas.contentOffset.x + canvas.bounds.width / 2) / zoom
+        let y = (visibleTop + visibleHeight / 2) / zoom
+        return CGPoint(x: min(max(x, 0), contentExtent.width), y: min(max(y, 0), contentExtent.height))
+    }
     var zoomScale: CGFloat { canvas.zoomScale }
 
     // MARK: الأدوات
