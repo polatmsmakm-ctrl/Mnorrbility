@@ -602,7 +602,7 @@ enum HandwritingTidy {
             var bestScore: CGFloat = 0
             for (index, tail) in tails.enumerated() {
                 let gap = piece.bounds.minX - tail.maxX
-                guard gap < unit * 4 else { continue }
+                guard gap < unit * 10 else { continue }
                 let overlap = min(piece.bounds.maxY, tail.maxY) - max(piece.bounds.minY, tail.minY)
                 guard overlap > min(piece.bounds.height, tail.height) * 0.3 else { continue }
                 let score = overlap - max(0, gap) * 0.1
