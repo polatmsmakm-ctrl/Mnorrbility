@@ -14,6 +14,8 @@ enum ToolKind: String, CaseIterable, Codable, Identifiable {
     case eraser
     case lasso
     case text
+    /// ترتيب الخط: ارسم دائرة حول الكتابة لتصبح أرتب
+    case tidy
 
     var id: String { rawValue }
 
@@ -35,6 +37,7 @@ enum ToolKind: String, CaseIterable, Codable, Identifiable {
         case .eraser: return "الممحاة"
         case .lasso: return "التحديد الحر"
         case .text: return "النص"
+        case .tidy: return "ترتيب الخط"
         }
     }
 
@@ -50,6 +53,7 @@ enum ToolKind: String, CaseIterable, Codable, Identifiable {
         case .eraser: return "eraser"
         case .lasso: return "lasso"
         case .text: return "textformat"
+        case .tidy: return "wand.and.stars"
         }
     }
 
@@ -62,7 +66,7 @@ enum ToolKind: String, CaseIterable, Codable, Identifiable {
         case .monoline: return .monoline
         case .crayon: return .crayon
         case .watercolor: return .watercolor
-        case .eraser, .lasso, .text: return nil
+        case .eraser, .lasso, .text, .tidy: return nil
         }
     }
 
@@ -76,7 +80,7 @@ enum ToolKind: String, CaseIterable, Codable, Identifiable {
         case .crayon: return 3...30
         case .watercolor: return 4...40
         case .eraser: return 4...80
-        case .lasso, .text: return 1...2
+        case .lasso, .text, .tidy: return 1...2
         }
     }
 
@@ -90,7 +94,7 @@ enum ToolKind: String, CaseIterable, Codable, Identifiable {
         case .crayon: return 10
         case .watercolor: return 16
         case .eraser: return 20
-        case .lasso, .text: return 1
+        case .lasso, .text, .tidy: return 1
         }
     }
 
@@ -192,7 +196,7 @@ struct ToolSettings: Codable, Equatable {
             case .pixel, .area:
                 return PKEraserTool(.bitmap, width: CGFloat(width(for: .eraser)))
             }
-        case .lasso, .text:
+        case .lasso, .text, .tidy:
             return PKLassoTool()
         default:
             let inkType = kind.inkType ?? .pen
@@ -224,6 +228,8 @@ struct CanvasToolState: Equatable {
     var tools: ToolSettings
     var fingerDrawing: Bool
     var rulerActive: Bool
+    var smartShapes: Bool
+    var tidy: TidyOptions
 }
 
 enum EditorPopover: Hashable {

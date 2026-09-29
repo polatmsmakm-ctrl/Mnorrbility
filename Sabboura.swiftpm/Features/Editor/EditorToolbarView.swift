@@ -33,6 +33,7 @@ struct FloatingToolbar: View {
                 ToolIconButton(kind: .eraser, symbol: "eraser", controller: controller)
                 ToolIconButton(kind: .text, symbol: "textformat", controller: controller)
                 ToolIconButton(kind: .lasso, symbol: "lasso", controller: controller)
+                ToolIconButton(kind: .tidy, symbol: "wand.and.stars", controller: controller)
 
                 insertMenu
                 recordButton
@@ -351,6 +352,17 @@ struct MoreToolsView: View {
                 }
                 .accessibilityIdentifier("rulerToggle")
 
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle(isOn: $controller.smartShapes) {
+                        Label("الأشكال الذكية", systemImage: "square.on.circle")
+                    }
+                    .accessibilityIdentifier("smartShapesToggle")
+                    Text("ارسم خطاً أو دائرة أو مربعاً أو مثلثاً وثبّت القلم نصف ثانية قبل ما ترفعه، فيتحول لشكل مضبوط.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
                 if AppEnvironment.isPhone {
                     Toggle(isOn: $controller.fingerDrawing) {
                         Label("الكتابة بالإصبع", systemImage: "hand.draw")
@@ -423,6 +435,8 @@ struct ToolOptionsView: View {
                     inkOptions
                 } else if kind == .eraser {
                     eraserOptions
+                } else if kind == .tidy {
+                    tidyOptions
                 } else {
                     Text("ارسم دائرة حول الكتابة لتحديدها، ثم اسحبها لنقلها، أو المس التحديد لإظهار خيارات النسخ والقص والتكرار والحذف.")
                         .font(.callout)
@@ -477,6 +491,28 @@ struct ToolOptionsView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.top, 8)
         }
+    }
+
+    @ViewBuilder
+    private var tidyOptions: some View {
+        Text("ارسم دائرة حول أي كتابة، فتصير أرتب وهي تبقى بخطك: السطر يستقيم وينزل على خط الصفحة، والمسافات بين الكلمات تتساوى، والرجفة الصغيرة تنعّم.")
+            .font(.callout)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+
+        Toggle("تعديل ميلان السطر", isOn: $controller.tidyOptions.straighten)
+        Toggle("الإنزال على خطوط الصفحة", isOn: $controller.tidyOptions.snapToLines)
+        Toggle("توحيد المسافات بين الكلمات", isOn: $controller.tidyOptions.evenSpacing)
+        Toggle("تنعيم الخط", isOn: $controller.tidyOptions.smooth)
+
+        Divider()
+
+        Button {
+            controller.tidyCurrentPage()
+        } label: {
+            Label("ترتيب كل كتابة هذه الصفحة", systemImage: "wand.and.stars")
+        }
+        .accessibilityIdentifier("tidyPage")
     }
 
     @ViewBuilder

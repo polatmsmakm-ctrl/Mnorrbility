@@ -15,6 +15,8 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
     var onZoomChanged: ((CGFloat) -> Void)?
     var onPencilDoubleTap: (() -> Void)?
     var onVisiblePageChanged: ((Int) -> Void)?
+    /// رسالة قصيرة للمستخدم (ترتيب الخط)
+    var onMessage: ((String) -> Void)?
 
     /// مساحة أعلى اللوحة لشريط الأدوات العائم، وأسفلها لمؤشر الصفحات.
     var topInset: CGFloat = 0 {
@@ -46,6 +48,15 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
     private var appliedState: CanvasToolState?
     private var savedPanMinimumTouches: Int?
     private var lastReportedPage = -1
+
+    /// ماذا يفعل مسار التحديد الحر: مسح الكتابة أو ترتيبها
+    private enum AreaAction { case erase, tidy }
+    private var areaAction: AreaAction = .erase
+    private let holdObserver = StrokeHoldObserver(target: nil, action: nil)
+    private var lastStrokeCount = 0
+    private var isReplacing = false
+    private var smartShapes = true
+    private var tidyOptions = TidyOptions()
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -89,6 +100,8 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
         lassoLayer.zPosition = 1000
         canvas.layer.addSublayer(lassoLayer)
 
+        canvas.addGestureRecognizer(holdObserver)
+
         areaGesture.addTarget(self, action: #selector(handleAreaGesture(_:)))
         areaGesture.isEnabled = false
         areaGesture.cancelsTouchesInView = true
@@ -118,6 +131,7 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
         canvas.overrideUserInterfaceStyle = dark ? .dark : .light
         backgroundView.configure(pages: pages, deskColor: deskColor)
         canvas.drawing = drawing
+        lastStrokeCount = drawing.strokes.count
         canvas.undoManager?.removeAllActions()
         isLoading = false
         pendingScrollPage = scrollToPage
@@ -151,8 +165,15 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
         canvas.drawingPolicy = state.fingerDrawing ? .anyInput : .pencilOnly
         canvas.isRulerActive = state.rulerActive
 
+        smartShapes = state.smartShapes
+        tidyOptions = state.tidy
         let textMode = state.tools.kind == .text
-        let areaMode = state.tools.kind == .eraser && state.tools.eraserMode == .area
+        let tidyMode = state.tools.kind == .tidy
+        let areaMode = tidyMode || (state.tools.kind == .eraser && state.tools.eraserMode == .area)
+        areaAction = tidyMode ? .tidy : .erase
+        let tint = tidyMode ? UIColor.systemIndigo : UIColor(red: 0.86, green: 0.15, blue: 0.15, alpha: 1)
+        lassoLayer.strokeColor = tint.withAlphaComponent(0.9).cgColor
+        lassoLayer.fillColor = tint.withAlphaComponent(0.08).cgColor
         itemsOverlay.isEditingEnabled = textMode
         setAreaEraseActive(areaMode, allowFinger: state.fingerDrawing)
         canvas.drawingGestureRecognizer.isEnabled = !(areaMode || textMode)
@@ -194,7 +215,10 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
     /// يستبدل الرسم كاملاً مع تسجيل خطوة تراجع (تُستخدم لمسح الصفحة وممحاة التحديد).
     func replaceDrawing(_ newDrawing: PKDrawing, actionName: String) {
         let oldDrawing = canvas.drawing
+        isReplacing = true
         canvas.drawing = newDrawing
+        lastStrokeCount = newDrawing.strokes.count
+        isReplacing = false
         if let undoManager = canvas.undoManager {
             undoManager.registerUndo(withTarget: self) { target in
                 target.replaceDrawing(oldDrawing, actionName: actionName)
@@ -350,7 +374,30 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
 
     func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
         guard !isLoading else { return }
+        let count = canvas.drawing.strokes.count
+        let strokeAdded = count == lastStrokeCount + 1
+        lastStrokeCount = count
         onDrawingChanged?()
+        // الأشكال الذكية: خط جديد انتهى والقلم ثابت لحظة
+        if strokeAdded && smartShapes && !isReplacing && (appliedState?.tools.kind.isInk ?? false) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.04) { [weak self] in
+                self?.snapLastStrokeIfHeld(expectedCount: count)
+            }
+        }
+    }
+
+    private func snapLastStrokeIfHeld(expectedCount: Int) {
+        guard CACurrentMediaTime() - holdObserver.lastHoldEndTime < 0.9 else { return }
+        let drawing = canvas.drawing
+        guard drawing.strokes.count == expectedCount, let last = drawing.strokes.last,
+              Date().timeIntervalSince(last.path.creationDate) < 30,
+              let shape = ShapeRecognizer.snapped(last) else { return }
+        holdObserver.lastHoldEndTime = 0
+        var strokes = drawing.strokes
+        strokes[strokes.count - 1] = shape
+        replaceDrawing(PKDrawing(strokes: strokes), actionName: "شكل مضبوط")
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        if AppEnvironment.isUITest { onMessage?("shape-snapped") }
     }
 
     func scrollViewDidZoom(_ scrollView: UIScrollView) {
@@ -388,7 +435,10 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
             CATransaction.setDisableActions(true)
             lassoLayer.path = Self.path(from: points, closed: true).cgPath
             CATransaction.commit()
-            eraseStrokes(enclosedBy: points)
+            switch areaAction {
+            case .erase: eraseStrokes(enclosedBy: points)
+            case .tidy: tidyStrokes(enclosedBy: points)
+            }
             CATransaction.begin()
             CATransaction.setAnimationDuration(0.25)
             lassoLayer.opacity = 0
@@ -434,6 +484,55 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
         guard removedCount > 0 else { return }
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         replaceDrawing(PKDrawing(strokes: remaining), actionName: "مسح التحديد")
+    }
+
+    // MARK: ترتيب الخط
+
+    private func tidyStrokes(enclosedBy contentPoints: [CGPoint]) {
+        let zoom = max(canvas.zoomScale, 0.0001)
+        let canvasPoints = contentPoints.map { CGPoint(x: $0.x / zoom, y: $0.y / zoom) }
+        let area = Self.boundingRect(of: canvasPoints)
+        guard area.width > 12 || area.height > 12 else {
+            onMessage?("ارسم دائرة حول الكتابة اللي تبي ترتبها")
+            return
+        }
+        let lasso = Self.path(from: canvasPoints, closed: true)
+        let drawing = canvas.drawing
+        var selected: [Int] = []
+        for (index, stroke) in drawing.strokes.enumerated() where stroke.renderBounds.intersects(area) {
+            let points = InkGeometry.points(of: stroke, spacing: 4)
+            let inside = points.filter { lasso.contains($0) }.count
+            if CGFloat(inside) >= CGFloat(points.count) * 0.5 {
+                selected.append(index)
+            }
+        }
+        applyTidy(to: selected)
+    }
+
+    /// يرتّب كل كتابة الصفحة المحددة.
+    func tidyPage(_ pageIndex: Int) {
+        guard let page = pages.first(where: { $0.index == pageIndex }) ?? pages.first else { return }
+        let band = page.frame.insetBy(dx: -40, dy: -Self.pageGap / 2)
+        let selected = canvas.drawing.strokes.indices.filter {
+            let bounds = canvas.drawing.strokes[$0].renderBounds
+            return band.contains(CGPoint(x: bounds.midX, y: bounds.midY))
+        }
+        applyTidy(to: selected)
+    }
+
+    private func applyTidy(to indices: [Int]) {
+        guard !indices.isEmpty else {
+            onMessage?("ما لقيت كتابة داخل التحديد")
+            return
+        }
+        let guides = pages.map { PageGuides(page: $0) }
+        guard let tidied = HandwritingTidy.tidy(canvas.drawing, selecting: indices, guides: guides, options: tidyOptions) else {
+            onMessage?("الكتابة مرتبة أصلاً ✨")
+            return
+        }
+        replaceDrawing(tidied, actionName: "ترتيب الخط")
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        onMessage?("تم ترتيب الخط — تقدر تتراجع إذا ما عجبك")
     }
 
     private static func stroke(_ stroke: PKStroke, isInside lasso: UIBezierPath, bounds: CGRect) -> Bool {

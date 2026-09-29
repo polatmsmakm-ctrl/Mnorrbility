@@ -54,6 +54,14 @@ final class EditorController: ObservableObject {
         didSet { EditorPreferences.showStatusBar = showStatusBar }
     }
     @Published var isRulerActive = false
+    /// الأشكال الذكية: ارسم شكلاً وثبّت القلم لحظة
+    @Published var smartShapes: Bool = SmartShapesSetting.load() {
+        didSet { if smartShapes != oldValue { SmartShapesSetting.save(smartShapes) } }
+    }
+    /// خيارات ترتيب الخط
+    @Published var tidyOptions: TidyOptions = TidyOptions.load() {
+        didSet { if tidyOptions != oldValue { tidyOptions.save() } }
+    }
     @Published var activePopover: EditorPopover? = nil
     @Published var showClearConfirmation = false
     @Published var editingItem: ItemEditTarget? = nil
@@ -131,6 +139,7 @@ final class EditorController: ObservableObject {
         view.onZoomChanged = { [weak self] relative in self?.zoomDidChange(relative) }
         view.onPencilDoubleTap = { [weak self] in self?.handlePencilDoubleTap() }
         view.onVisiblePageChanged = { [weak self] index in self?.visiblePageChanged(index) }
+        view.onMessage = { [weak self] message in self?.showToast(message) }
         view.itemsOverlay.onTapEmpty = { [weak self] point in self?.createTextItem(at: point) }
         view.itemsOverlay.onTapItem = { [weak self] id in self?.editItem(id) }
         view.itemsOverlay.onItemFrameChanged = { [weak self] id, frame in self?.moveItem(id, to: frame) }
@@ -139,7 +148,8 @@ final class EditorController: ObservableObject {
     }
 
     var canvasToolState: CanvasToolState {
-        CanvasToolState(tools: tools, fingerDrawing: fingerDrawing, rulerActive: isRulerActive)
+        CanvasToolState(tools: tools, fingerDrawing: fingerDrawing, rulerActive: isRulerActive,
+                        smartShapes: smartShapes, tidy: tidyOptions)
     }
 
     /// يُستدعى من الواجهة عند تغيّر الثيم أو الوضع الداكن.
@@ -408,6 +418,8 @@ final class EditorController: ObservableObject {
         if kind.isInk { tools.lastInkKind = kind }
         if kind == .text {
             showToast("انقر على الصفحة لإضافة نص، واسحب العناصر لنقلها")
+        } else if kind == .tidy {
+            showToast("ارسم دائرة حول الكتابة لترتيبها — اضغط الأداة مرة ثانية للخيارات")
         }
     }
 
@@ -536,6 +548,14 @@ final class EditorController: ObservableObject {
     }
 
     func zoomIn() { canvasView?.zoom(by: 1.25) }
+
+    /// يرتّب كل الكتابة في الصفحة الحالية.
+    func tidyCurrentPage() {
+        closePopover { [weak self] in
+            guard let self else { return }
+            self.canvasView?.tidyPage(self.currentIndex)
+        }
+    }
     func zoomOut() { canvasView?.zoom(by: 0.8) }
     func zoomToFit() { canvasView?.zoomToFit() }
 

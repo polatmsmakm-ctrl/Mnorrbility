@@ -320,6 +320,48 @@ final class SabbouraUITests: XCTestCase {
         assertAppAlive("جلسات المذاكرة")
     }
 
+    /// الأشكال الذكية (ارسم وثبّت) وترتيب الخط.
+    func test6_SmartInk() {
+        launch(reset: true, extra: ["-uitest-dark"])
+        openFolder()
+        newNote()
+        let canvas = canvasElement()
+        XCTAssertTrue(canvas.waitForExistence(timeout: 10))
+        sleep(1)
+
+        // خط مائل قليلاً مع تثبيت القلم في النهاية ← يصبح خطاً مستقيماً مضبوطاً
+        let start = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.15, dy: rowBase + 0.02))
+        let end = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: rowBase + 0.035))
+        start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.9)
+        let toast = app.staticTexts["toast"].firstMatch
+        XCTAssertTrue(toast.waitForExistence(timeout: 4) && toast.label.contains("shape-snapped"),
+                      "الخط لم يتحول لشكل مضبوط")
+        snap("60-smart-line")
+
+        // كتابة مائلة ثم «ترتيب كل كتابة هذه الصفحة»
+        for row in [0.12, 0.2] {
+            drawLine(on: canvas, from: CGVector(dx: 0.2, dy: rowBase + row), to: CGVector(dx: 0.38, dy: rowBase + row + 0.03))
+            drawLine(on: canvas, from: CGVector(dx: 0.42, dy: rowBase + row + 0.035), to: CGVector(dx: 0.6, dy: rowBase + row + 0.065))
+            drawLine(on: canvas, from: CGVector(dx: 0.64, dy: rowBase + row + 0.07), to: CGVector(dx: 0.82, dy: rowBase + row + 0.1))
+        }
+        sleep(1)
+        snap("61-before-tidy")
+        tap(app.buttons["tool.tidy"], "tool.tidy")
+        sleep(3)
+        tap(app.buttons["tool.tidy"], "tidy options")
+        let options = app.descendants(matching: .any)["toolOptions"]
+        XCTAssertTrue(options.waitForExistence(timeout: 4), "خيارات ترتيب الخط لم تظهر")
+        snap("62-tidy-options")
+        tap(app.buttons["tidyPage"], "tidyPage")
+        let result = app.staticTexts.matching(NSPredicate(format: "identifier == 'toast' AND (label CONTAINS 'ترتيب' OR label CONTAINS 'مرتبة')")).firstMatch
+        XCTAssertTrue(result.waitForExistence(timeout: 6), "ترتيب الخط لم يعمل")
+        sleep(1)
+        snap("63-after-tidy")
+        tap(app.buttons["undo"], "undo tidy")
+        tap(app.buttons["tool.pen"], "tool.pen")
+        assertAppAlive("الأشكال الذكية وترتيب الخط")
+    }
+
     // MARK: - أدوات مساعدة
 
     private func launch(reset: Bool, extra: [String] = []) {
