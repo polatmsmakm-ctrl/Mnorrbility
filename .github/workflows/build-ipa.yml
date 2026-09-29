@@ -1,0 +1,168 @@
+name: Build and Test Mnorrbility
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 75
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Tools
+        run: |
+          xcodebuild -version
+          brew install xcodegen
+          mkdir -p results/shots results/crashes
+
+      - name: Prepare sources and project
+        run: |
+          rm -rf AppSources
+          mkdir AppSources
+          rsync -a --exclude 'Package.swift' --exclude '.swiftpm' Sabboura.swiftpm/ AppSources/
+          xcodegen generate
+
+      - name: Build device app (unsigned IPA)
+        id: device
+        run: |
+          set +e
+          xcodebuild -project Sabboura.xcodeproj -target Sabboura \
+            -configuration Release -sdk iphoneos \
+            SYMROOT="$PWD/build" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            build > results/device-build.log 2>&1
+          code=$?
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          grep -E "error:" results/device-build.log | sort -u > results/device-errors.txt
+          grep -E "warning:" results/device-build.log | grep -v appintents | sort -u > results/device-warnings.txt
+          if [ $code -eq 0 ]; then
+            rm -rf Payload && mkdir Payload
+            cp -R build/Release-iphoneos/Sabboura.app Payload/
+            zip -qry results/Sabboura.ipa Payload
+            ls -lh results/Sabboura.ipa
+          fi
+          echo "device build exit: $code"
+
+      - name: Build for simulator tests
+        id: simbuild
+        if: ${{ !contains(github.event.head_commit.message, '[skip tests]') }}
+        run: |
+          set +e
+          xcodebuild build-for-testing -project Sabboura.xcodeproj -scheme Sabboura \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath dd \
+            CODE_SIGN_IDENTITY="-" CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM="" \
+            > results/sim-build.log 2>&1
+          code=$?
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          grep -E "error:" results/sim-build.log | sort -u > results/sim-errors.txt
+          echo "simulator build exit: $code"
+
+      - name: Pick simulators
+        id: sims
+        if: steps.simbuild.outcome == 'success' && steps.simbuild.outputs.code == '0'
+        run: |
+          xcrun simctl list devices available > results/simulators.txt
+          python3 - <<'EOF' >> "$GITHUB_OUTPUT"
+          import json, subprocess
+          data = json.loads(subprocess.check_output(["xcrun", "simctl", "list", "devices", "available", "-j"]))
+          devices = []
+          for runtime, items in data["devices"].items():
+              if "iOS" not in runtime:
+                  continue
+              for item in items:
+                  devices.append((runtime, item["name"], item["udid"]))
+          devices.sort(key=lambda d: d[0], reverse=True)
+          def pick(prefs):
+              for pref in prefs:
+                  for runtime, name, udid in devices:
+                      if name.startswith(pref):
+                          return udid, name
+              return "", ""
+          ipad = pick(["iPad Pro 13-inch", "iPad Pro 12.9-inch", "iPad Pro", "iPad Air", "iPad"])
+          iphone = pick(["iPhone 16 Pro", "iPhone 16", "iPhone 15 Pro", "iPhone 15", "iPhone"])
+          print(f"ipad={ipad[0]}")
+          print(f"ipad_name={ipad[1]}")
+          print(f"iphone={iphone[0]}")
+          print(f"iphone_name={iphone[1]}")
+          EOF
+          cat "$GITHUB_OUTPUT"
+
+      - name: Test on iPad simulator
+        if: steps.simbuild.outcome == 'success' && steps.simbuild.outputs.code == '0' && steps.sims.outputs.ipad != ''
+        run: |
+          set +e
+          xcrun simctl boot "${{ steps.sims.outputs.ipad }}"
+          xcrun simctl bootstatus "${{ steps.sims.outputs.ipad }}" -b
+          TEST_RUNNER_SCREENSHOT_DIR="$PWD/results/shots/ipad" \
+          xcodebuild test-without-building -project Sabboura.xcodeproj -scheme Sabboura \
+            -destination "id=${{ steps.sims.outputs.ipad }}" -derivedDataPath dd \
+            -resultBundlePath results/ipad.xcresult -parallel-testing-enabled NO \
+            > results/test-ipad.log 2>&1
+          echo "ipad tests exit: $?" | tee results/test-ipad-status.txt
+          xcrun simctl shutdown "${{ steps.sims.outputs.ipad }}"
+
+      - name: Test on iPhone simulator
+        if: steps.simbuild.outcome == 'success' && steps.simbuild.outputs.code == '0' && steps.sims.outputs.iphone != ''
+        run: |
+          set +e
+          xcrun simctl boot "${{ steps.sims.outputs.iphone }}"
+          xcrun simctl bootstatus "${{ steps.sims.outputs.iphone }}" -b
+          TEST_RUNNER_SCREENSHOT_DIR="$PWD/results/shots/iphone" \
+          xcodebuild test-without-building -project Sabboura.xcodeproj -scheme Sabboura \
+            -destination "id=${{ steps.sims.outputs.iphone }}" -derivedDataPath dd \
+            -resultBundlePath results/iphone.xcresult -parallel-testing-enabled NO \
+            > results/test-iphone.log 2>&1
+          echo "iphone tests exit: $?" | tee results/test-iphone-status.txt
+
+      - name: Collect reports
+        if: always()
+        run: |
+          set +e
+          echo "${{ steps.sims.outputs.ipad_name }} / ${{ steps.sims.outputs.iphone_name }}" > results/devices.txt
+          for device in ipad iphone; do
+            if [ -d "results/$device.xcresult" ]; then
+              xcrun xcresulttool get test-results summary --path "results/$device.xcresult" > "results/$device-summary.json" 2>&1
+              xcrun xcresulttool get test-results tests --path "results/$device.xcresult" > "results/$device-tests.json" 2>&1
+              mkdir -p "results/attachments-$device"
+              xcrun xcresulttool export attachments --path "results/$device.xcresult" --output-path "results/attachments-$device" > /dev/null 2>&1
+            fi
+            if [ -f "results/test-$device.log" ]; then
+              grep -E "Test Case|error:|crash|Crash|failed|XCTAssert|Executed" "results/test-$device.log" > "results/test-$device-highlights.txt"
+            fi
+          done
+          cp ~/Library/Logs/DiagnosticReports/Sabboura* results/crashes/ 2>/dev/null
+          cp ~/Library/Logs/DiagnosticReports/*Sabboura* results/crashes/ 2>/dev/null
+          ls -la results/crashes
+          # تصغير الصور وتحويلها إلى JPEG
+          find results/shots results/attachments-* -name "*.png" 2>/dev/null | while read -r png; do
+            sips -s format jpeg -s formatOptions 70 -Z 1400 "$png" --out "${png%.png}.jpg" > /dev/null 2>&1 && rm "$png"
+          done
+          rm -rf results/*.xcresult
+          gzip -9 results/*.log
+          du -sh results
+
+      - name: Publish results to builds branch
+        if: always()
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd results
+          echo "$GITHUB_SHA" > source-sha.txt
+          echo "device=${{ steps.device.outputs.code }} sim=${{ steps.simbuild.outputs.code }}" > status.txt
+          git init -q -b builds
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add -A
+          git commit -qm "Build ${{ github.run_number }} of $GITHUB_SHA"
+          git push -qf "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}.git" builds
+
+      - name: Fail if the device build failed
+        if: steps.device.outputs.code != '0'
+        run: exit 1

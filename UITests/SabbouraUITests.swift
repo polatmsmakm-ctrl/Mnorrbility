@@ -1,0 +1,539 @@
+import UIKit
+import XCTest
+
+/// اختبارات واجهة شاملة: تُشغَّل على محاكي آيباد ومحاكي آيفون وتلتقط صوراً لكل خطوة.
+final class SabbouraUITests: XCTestCase {
+    private var app: XCUIApplication!
+    private var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
+    private let folderName = "الرياضيات"
+
+    /// بداية منطقة الكتابة (الشريط العائم يغطي أعلى الشاشة)
+    private var rowBase: CGFloat { isPad ? 0.22 : 0.34 }
+
+    override func setUp() {
+        super.setUp()
+        continueAfterFailure = true
+        XCUIDevice.shared.orientation = isPad ? .landscapeLeft : .portrait
+    }
+
+    // MARK: - الاختبارات
+
+    /// المسار الكامل بالثيم الداكن: مجلد ← مذكرة ← كتابة ← أدوات ← نص ← قالب ← صفحات ← تصدير ← مفضلة ← حذف واسترجاع.
+    func test1_FullFlow() {
+        launch(reset: true, extra: ["-uitest-dark"])
+        snap("01-library")
+
+        openFolder()
+        snap("02-folder")
+        newNote()
+        let canvas = canvasElement()
+        XCTAssertTrue(canvas.waitForExistence(timeout: 10), "لوحة الكتابة لم تظهر")
+        sleep(1)
+        snap("03-editor-empty")
+
+        drawZigzag(on: canvas, row: rowBase)
+        drawZigzag(on: canvas, row: rowBase + 0.06)
+        XCTAssertTrue(app.buttons["undo"].waitForEnabled(timeout: 4), "زر التراجع لم يتفعّل بعد الكتابة")
+
+        tap(app.buttons["tool.pencil"], "tool.pencil")
+        drawZigzag(on: canvas, row: rowBase + 0.12)
+        tap(app.buttons["tool.marker"], "tool.marker")
+        drawLine(on: canvas, from: CGVector(dx: 0.15, dy: rowBase), to: CGVector(dx: 0.8, dy: rowBase))
+        tap(app.buttons["tool.pen"], "tool.pen")
+        tap(app.buttons["swatch.1"], "swatch blue")
+        drawZigzag(on: canvas, row: rowBase + 0.18)
+        tap(app.buttons["swatch.3"], "swatch red")
+        drawZigzag(on: canvas, row: rowBase + 0.24)
+        snap("04-drawn")
+
+        // خيارات القلم والسماكة
+        tap(app.buttons["tool.pen"], "tool.pen options")
+        let options = app.descendants(matching: .any)["toolOptions"]
+        XCTAssertTrue(options.waitForExistence(timeout: 4), "خيارات الأداة لم تظهر")
+        snap("05-tool-options")
+        dismissPanel(checking: options)
+        tap(app.buttons["sizeButton"], "sizeButton")
+        let sizePicker = app.descendants(matching: .any)["sizePicker"]
+        XCTAssertTrue(sizePicker.waitForExistence(timeout: 4), "لوحة السماكة لم تظهر")
+        dismissPanel(checking: sizePicker)
+
+        // الممحاة: كلمة كاملة ثم تحديد ومسح
+        tap(app.buttons["tool.eraser"], "tool.eraser")
+        tap(app.buttons["tool.eraser"], "eraser options")
+        if options.waitForExistence(timeout: 4) {
+            tap(app.buttons["كلمة كاملة"], "stroke eraser mode")
+            dismissPanel(checking: options)
+        }
+        drawLine(on: canvas, from: CGVector(dx: 0.5, dy: rowBase + 0.16), to: CGVector(dx: 0.5, dy: rowBase + 0.21))
+        snap("06-erased")
+        tap(app.buttons["undo"], "undo")
+        tap(app.buttons["redo"], "redo")
+
+        // مربع نص
+        tap(app.buttons["tool.text"], "tool.text")
+        canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: rowBase + 0.34)).tap()
+        let textField = app.textViews["itemText"]
+        if textField.waitForExistence(timeout: 5) {
+            textField.tap()
+            textField.typeText("Hello notes")
+            tap(app.buttons["itemDone"], "itemDone")
+        } else {
+            XCTFail("نافذة النص لم تظهر")
+        }
+        sleep(1)
+        XCTAssertTrue(app.descendants(matching: .any)["textItem"].waitForExistence(timeout: 4), "النص لم يُضف")
+        snap("07-text")
+        tap(app.buttons["tool.pen"], "tool.pen back")
+
+        // قالب الصفحة
+        openMore("قالب الصفحة")
+        let picker = app.descendants(matching: .any)["backgroundPicker"]
+        XCTAssertTrue(picker.waitForExistence(timeout: 4), "لوحة القوالب لم تظهر")
+        tap(app.buttons["bg.grid"], "bg.grid")
+        snap("08-template-picker")
+        dismissPanel(checking: picker)
+
+        // إعدادات العرض: صفحة واحدة ثم متصل
+        openMore("إعدادات العرض")
+        let viewSettings = app.descendants(matching: .any)["viewSettings"]
+        XCTAssertTrue(viewSettings.waitForExistence(timeout: 4), "إعدادات العرض لم تظهر")
+        snap("09-view-settings")
+        tap(app.buttons["viewSingle"], "viewSingle")
+        tap(app.buttons["viewSeamless"], "viewSeamless")
+        dismissPanel(checking: viewSettings)
+
+        // صفحة جديدة + تنقل
+        addPage()
+        XCTAssertTrue(waitForLabel(app.buttons["pageCounter"], contains: "2 / 2"), "الصفحة الجديدة لم تُضف")
+        sleep(1)
+        drawZigzag(on: canvas, row: rowBase + 0.1)
+        snap("10-page-2")
+        tap(app.buttons["prevPage"], "prevPage")
+        XCTAssertTrue(waitForLabel(app.buttons["pageCounter"], contains: "1 / 2"), "لم يتم الرجوع للصفحة الأولى")
+        sleep(1)
+        snap("11-seamless")
+
+        // كل الصفحات
+        tap(app.buttons["pageCounter"], "pageCounter")
+        let done = app.buttons["pagesDone"]
+        XCTAssertTrue(done.waitForExistence(timeout: 5), "شاشة الصفحات لم تظهر")
+        sleep(1)
+        snap("12-pages-overview")
+        done.tap()
+
+        // التكبير
+        canvas.pinch(withScale: 1.8, velocity: 2)
+        sleep(1)
+        snap("13-zoomed")
+        canvas.pinch(withScale: 0.6, velocity: -2)
+
+        // التصدير PDF
+        tap(app.buttons["exportMenu"], "exportMenu")
+        tap(app.buttons["المذكرة كاملة PDF"], "export pdf")
+        waitForShareSheet()
+        snap("14-share-pdf")
+        dismissShareSheet()
+
+        // الرجوع للملاحظات
+        tap(app.buttons["editorBack"], "editorBack")
+        sleep(2)
+        snap("15-folder-with-note")
+
+        // مفضلة + تكرار + حذف من القائمة المختصرة
+        let card = app.buttons.matching(identifier: "noteCard").firstMatch
+        XCTAssertTrue(card.waitForExistence(timeout: 5), "بطاقة المذكرة غير موجودة")
+        card.press(forDuration: 1.3)
+        tap(app.buttons["إضافة للمفضلة"], "favorite")
+        sleep(1)
+        app.buttons.matching(identifier: "noteCard").firstMatch.press(forDuration: 1.3)
+        tap(app.buttons["تكرار"], "duplicate")
+        sleep(1)
+        XCTAssertEqual(app.buttons.matching(identifier: "noteCard").count, 2, "التكرار لم ينجح")
+        app.buttons.matching(identifier: "noteCard").firstMatch.press(forDuration: 1.3)
+        tap(app.buttons["حذف"], "delete from context menu")
+        tap(app.buttons["حذف"], "confirm delete")
+        sleep(2)
+        XCTAssertEqual(app.buttons.matching(identifier: "noteCard").count, 1, "الحذف لم ينجح")
+
+        // تبويبات الملاحظات والمفضلة
+        goToSidebar()
+        tap(app.buttons["nav.notes"], "nav.notes")
+        tap(app.buttons["tab.favorites"], "tab.favorites")
+        sleep(1)
+        snap("16-favorites")
+        tap(app.buttons["tab.all"], "tab.all")
+
+        // الإعدادات ← المحذوفة مؤخراً ← استرجاع
+        goToSidebar()
+        tap(app.buttons["settingsButton"], "settingsButton")
+        tap(app.buttons["settings.trash"], "settings.trash", fallbackStaticText: "المحذوفة مؤخراً")
+        let restore = app.buttons["restoreNote"].firstMatch
+        if restore.waitForExistence(timeout: 5) {
+            snap("17-trash")
+            restore.tap()
+        } else {
+            XCTFail("المذكرة المحذوفة غير موجودة في السلة")
+        }
+        closeSettings()
+        assertAppAlive("نهاية المسار الكامل")
+    }
+
+    /// الثيمات: من الفاتح إلى الأسود الفاحم، والمحتوى يطابق الثيم.
+    func test2_Themes() {
+        launch(reset: true)
+        sleep(1)
+        snap("20-light-library")
+        openFolder()
+        newNote()
+        let canvas = canvasElement()
+        XCTAssertTrue(canvas.waitForExistence(timeout: 10))
+        drawZigzag(on: canvas, row: rowBase)
+        tap(app.buttons["tool.text"], "tool.text")
+        canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: rowBase + 0.12)).tap()
+        if app.textViews["itemText"].waitForExistence(timeout: 5) {
+            app.textViews["itemText"].tap()
+            app.textViews["itemText"].typeText("Light and dark")
+            tap(app.buttons["itemDone"], "itemDone")
+        }
+        tap(app.buttons["tool.pen"], "tool.pen")
+        sleep(3)
+        snap("21-light-editor")
+        tap(app.buttons["editorBack"], "editorBack")
+        sleep(1)
+
+        goToSidebar()
+        tap(app.buttons["settingsButton"], "settingsButton")
+        tap(app.buttons["settings.appearance"], "settings.appearance", fallbackStaticText: "المظهر", optional: isPad)
+        let match = app.switches["matchSystem"].firstMatch
+        if match.waitForExistence(timeout: 5) {
+            for offset in [0.08, 0.92, 0.5] where (match.value as? String) == "1" {
+                match.coordinate(withNormalizedOffset: CGVector(dx: offset, dy: 0.5)).tap()
+                sleep(1)
+            }
+        } else {
+            XCTFail("إعداد مطابقة المظهر غير موجود")
+        }
+        sleep(1)
+        tap(app.buttons["theme.jetBlack"], "theme.jetBlack")
+        sleep(1)
+        snap("22-appearance")
+        closeSettings()
+        sleep(1)
+        snap("23-dark-library")
+
+        openFolder()
+        let card = app.buttons.matching(identifier: "noteCard").firstMatch
+        XCTAssertTrue(card.waitForExistence(timeout: 5))
+        card.tap()
+        XCTAssertTrue(canvasElement().waitForExistence(timeout: 10))
+        sleep(2)
+        snap("24-dark-editor")
+        assertAppAlive("الثيمات")
+    }
+
+    /// استيراد PDF كصفحات للكتابة عليها (وضع داكن مع عكس ألوان PDF) + المرفقات + المعرض.
+    func test3_PDFImport() {
+        launch(reset: true, extra: ["-uitest-import-pdf", "-uitest-dark", "-uitest-theme", "darkBlue"])
+        openFolder()
+        newNote()
+        let canvas = canvasElement()
+        XCTAssertTrue(canvas.waitForExistence(timeout: 10))
+        XCTAssertTrue(waitForLabel(app.buttons["pageCounter"], contains: "/ 3", timeout: 12), "صفحات PDF لم تُستورد")
+        sleep(5)
+        snap("30-pdf-dark")
+        drawZigzag(on: canvas, row: rowBase + 0.3)
+        tap(app.buttons["tool.marker"], "marker")
+        drawLine(on: canvas, from: CGVector(dx: 0.15, dy: rowBase + 0.1), to: CGVector(dx: 0.7, dy: rowBase + 0.1))
+        snap("31-pdf-annotated")
+
+        openMore("المرفقات والتسجيلات", prefix: true)
+        let doneButton = app.buttons["attachmentsDone"]
+        XCTAssertTrue(doneButton.waitForExistence(timeout: 5), "المرفقات لم تظهر")
+        sleep(1)
+        snap("32-attachments")
+        doneButton.tap()
+
+        tap(app.buttons["exportMenu"], "exportMenu")
+        tap(app.buttons["الصفحة الحالية صورة PNG"], "export png")
+        waitForShareSheet()
+        snap("33-share-png")
+        dismissShareSheet()
+
+        tap(app.buttons["editorBack"], "editorBack")
+        sleep(1)
+        goToSidebar()
+        tap(app.buttons["nav.gallery"], "nav.gallery")
+        sleep(2)
+        snap("34-gallery")
+        assertAppAlive("استيراد PDF")
+    }
+
+    /// الحفظ التلقائي: الكتابة ثم إغلاق التطبيق وإعادة فتحه.
+    func test4_Persistence() {
+        launch(reset: true, extra: ["-uitest-dark"])
+        openFolder()
+        newNote()
+        let canvas = canvasElement()
+        XCTAssertTrue(canvas.waitForExistence(timeout: 10))
+        drawZigzag(on: canvas, row: rowBase)
+        drawZigzag(on: canvas, row: rowBase + 0.08)
+        addPage()
+        sleep(1)
+        drawZigzag(on: canvas, row: rowBase + 0.1)
+        sleep(2)
+        app.terminate()
+
+        launch(reset: false, extra: ["-uitest-dark"])
+        openFolder()
+        let card = app.buttons.matching(identifier: "noteCard").firstMatch
+        XCTAssertTrue(card.waitForExistence(timeout: 8), "المذكرة لم تُحفظ بعد إعادة التشغيل")
+        sleep(1)
+        snap("40-after-relaunch")
+        card.tap()
+        XCTAssertTrue(canvasElement().waitForExistence(timeout: 10))
+        XCTAssertTrue(waitForLabel(app.buttons["pageCounter"], contains: "/ 2", timeout: 6), "عدد الصفحات لم يُحفظ")
+        sleep(1)
+        snap("41-restored-drawing")
+        assertAppAlive("الحفظ التلقائي")
+    }
+
+    /// الرئيسية وجلسات المذاكرة.
+    func test5_HomeAndStudy() {
+        launch(reset: true, extra: ["-uitest-dark"])
+        goToSidebar()
+        tap(app.buttons["nav.home"], "nav.home")
+        sleep(1)
+        snap("50-home")
+        tap(app.buttons["home.study"], "home.study")
+        XCTAssertTrue(app.buttons["startStudy"].waitForExistence(timeout: 5), "شاشة جلسات المذاكرة لم تظهر")
+        tap(app.buttons["study.30"], "study 30")
+        tap(app.buttons["rest.5"], "rest 5")
+        tap(app.buttons["total.2"], "total 2")
+        snap("51-study-setup")
+        tap(app.buttons["startStudy"], "startStudy")
+        let pill = app.descendants(matching: .any)["studyPill"]
+        XCTAssertTrue(pill.waitForExistence(timeout: 5), "مؤقت المذاكرة لم يظهر")
+        sleep(2)
+        snap("52-study-running")
+        tap(app.buttons["studyPause"], "studyPause")
+        tap(app.buttons["studyStop"], "studyStop")
+        assertAppAlive("جلسات المذاكرة")
+    }
+
+    // MARK: - أدوات مساعدة
+
+    private func launch(reset: Bool, extra: [String] = []) {
+        app = XCUIApplication()
+        app.launchArguments = ["-uitest"] + (reset ? ["-uitest-reset"] : []) + extra
+        app.launch()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 15), "التطبيق لم يعمل")
+    }
+
+    private func assertAppAlive(_ step: String) {
+        XCTAssertEqual(app.state, .runningForeground, "التطبيق توقف أثناء: \(step)")
+    }
+
+    private func canvasElement() -> XCUIElement {
+        app.descendants(matching: .any)["canvas"]
+    }
+
+    /// على الآيفون: الرجوع إلى القائمة الجانبية.
+    private func goToSidebar() {
+        guard !isPad else { return }
+        for _ in 0..<4 where !app.buttons["settingsButton"].exists {
+            goBack()
+            sleep(1)
+        }
+    }
+
+    private func openFolder() {
+        goToSidebar()
+        let row = app.buttons["folder.\(folderName)"].firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10), "المجلد \(folderName) غير موجود")
+        row.tap()
+        XCTAssertTrue(app.buttons["newButton"].waitForExistence(timeout: 8), "شاشة الملاحظات لم تظهر")
+    }
+
+    private func newNote() {
+        tap(app.buttons["newButton"], "newButton")
+        tap(app.buttons["مذكرة جديدة"], "new note item")
+        let canvas = canvasElement()
+        if canvas.waitForExistence(timeout: 8) { return }
+        // تشخيص: سجل التنقّل داخل التطبيق ثم فتح المذكرة من بطاقتها لمتابعة بقية الاختبار
+        let log = app.staticTexts["debugLog"].firstMatch
+        XCTFail("المذكرة الجديدة لم تُفتح تلقائياً — سجل التنقّل: \(log.exists ? log.label : "غير متاح")")
+        snap("missing-editor-after-new")
+        let card = app.buttons.matching(identifier: "noteCard").firstMatch
+        if card.waitForExistence(timeout: 3) { card.tap() }
+    }
+
+    private func addPage() {
+        if isPad {
+            tap(app.buttons["addPage"], "addPage")
+        } else {
+            openMore("صفحة جديدة")
+        }
+    }
+
+    private func openMore(_ item: String, prefix: Bool = false) {
+        tap(app.buttons["moreMenu"], "moreMenu")
+        let element = prefix
+            ? app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", item)).firstMatch
+            : app.buttons[item]
+        tap(element, item)
+    }
+
+    private func closeSettings() {
+        let close = app.buttons["closeSettings"].firstMatch
+        if close.waitForExistence(timeout: 3) && close.isHittable {
+            close.tap()
+        } else {
+            let other = app.buttons["إغلاق"].firstMatch
+            if other.exists { other.tap() }
+        }
+        sleep(1)
+    }
+
+    private func goBack() {
+        let bars = app.navigationBars
+        for label in ["BackButton", "Back", "رجوع", "Mnorrbility", folderName, "الملاحظات"] {
+            let button = bars.buttons[label].firstMatch
+            if button.exists && button.isHittable {
+                button.tap()
+                return
+            }
+        }
+        let fallback = bars.firstMatch.buttons.element(boundBy: 0)
+        if fallback.exists && fallback.isHittable { fallback.tap() }
+    }
+
+    @discardableResult
+    private func tap(_ query: XCUIElement, _ what: String, timeout: TimeInterval = 6,
+                     fallbackStaticText: String? = nil, optional: Bool = false) -> Bool {
+        let element = query.firstMatch
+        if element.waitForExistence(timeout: timeout) {
+            let window = app.windows.firstMatch.frame
+            let onScreen = !window.isEmpty && window.insetBy(dx: -1, dy: -1).contains(element.frame)
+            if element.isHittable || !onScreen {
+                element.tap()
+            } else {
+                // العنصر ظاهر لكن XCUITest يظنه مغطّى: نقرة على موضعه مباشرة كما يفعل المستخدم
+                print("⚠️ \(what) غير قابل للنقر حسب XCUITest — نقرة بالإحداثيات")
+                element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            }
+            return true
+        }
+        if let text = fallbackStaticText {
+            let label = app.staticTexts[text].firstMatch
+            if label.exists {
+                label.tap()
+                return true
+            }
+        }
+        if !optional {
+            XCTFail("العنصر غير موجود: \(what)")
+            snap("missing-\(what.replacingOccurrences(of: " ", with: "_"))")
+        }
+        return false
+    }
+
+    private func waitForLabel(_ element: XCUIElement, contains text: String, timeout: TimeInterval = 5) -> Bool {
+        let predicate = NSPredicate(format: "label CONTAINS %@", text)
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
+        return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
+    }
+
+    private func dismissPanel(checking element: XCUIElement) {
+        let done = app.buttons["panelDone"].firstMatch
+        if !isPad {
+            for _ in 0..<2 where done.exists {
+                done.tap()
+                if element.waitForNonExistence(timeout: 3) { return }
+            }
+        }
+        if isPad {
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.03, dy: 0.97)).tap()
+        } else {
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.1)).tap()
+        }
+        if element.waitForNonExistence(timeout: 2) { return }
+        let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.45))
+        let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.98))
+        start.press(forDuration: 0.05, thenDragTo: end)
+        _ = element.waitForNonExistence(timeout: 2)
+    }
+
+    private var shareSheet: XCUIElement {
+        app.descendants(matching: .any).matching(NSPredicate(format: "identifier IN %@",
+                                                            ["ActivityListView", "UIActivityContentView"])).firstMatch
+    }
+
+    private func waitForShareSheet() {
+        if !shareSheet.waitForExistence(timeout: 12) {
+            XCTFail("قائمة المشاركة لم تظهر")
+        }
+        sleep(1)
+    }
+
+    private func dismissShareSheet() {
+        for _ in 0..<3 {
+            guard shareSheet.exists else { return }
+            let close = app.buttons.matching(NSPredicate(format: "label IN %@ OR identifier IN %@",
+                                                         ["Close", "إغلاق", "Cancel"], ["Close", "xmark"])).firstMatch
+            if close.exists && close.isHittable {
+                close.tap()
+            } else if isPad {
+                app.coordinate(withNormalizedOffset: CGVector(dx: 0.03, dy: 0.97)).tap()
+            } else {
+                let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.45))
+                let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.99))
+                start.press(forDuration: 0.05, thenDragTo: end)
+            }
+            _ = shareSheet.waitForNonExistence(timeout: 4)
+        }
+        if shareSheet.exists { XCTFail("تعذّر إغلاق قائمة المشاركة") }
+    }
+
+    // MARK: الرسم
+
+    private func drawLine(on element: XCUIElement, from: CGVector, to: CGVector) {
+        let start = element.coordinate(withNormalizedOffset: from)
+        let end = element.coordinate(withNormalizedOffset: to)
+        start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.05)
+    }
+
+    private func drawZigzag(on element: XCUIElement, row: CGFloat) {
+        drawLine(on: element, from: CGVector(dx: 0.12, dy: row), to: CGVector(dx: 0.35, dy: row + 0.03))
+        drawLine(on: element, from: CGVector(dx: 0.38, dy: row + 0.03), to: CGVector(dx: 0.6, dy: row))
+        drawLine(on: element, from: CGVector(dx: 0.63, dy: row), to: CGVector(dx: 0.85, dy: row + 0.03))
+    }
+
+    // MARK: الصور
+
+    private func snap(_ name: String) {
+        let screenshot = XCUIScreen.main.screenshot()
+        let attachment = XCTAttachment(screenshot: screenshot)
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
+
+        let environment = ProcessInfo.processInfo.environment
+        if let directory = environment["SCREENSHOT_DIR"], !directory.isEmpty {
+            try? FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
+            let url = URL(fileURLWithPath: directory).appendingPathComponent("\(name).png")
+            try? screenshot.pngRepresentation.write(to: url)
+        }
+    }
+}
+
+private extension XCUIElement {
+    func waitForEnabled(timeout: TimeInterval) -> Bool {
+        let expectation = XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == true"), object: self)
+        return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
+    }
+
+    func waitForNonExistence(timeout: TimeInterval) -> Bool {
+        let expectation = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: self)
+        return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
+    }
+}

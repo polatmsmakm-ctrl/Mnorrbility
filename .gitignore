@@ -1,0 +1,8 @@
+AppSources/
+Sabboura.xcodeproj/
+build/
+Payload/
+*.ipa
+.DS_Store
+.swiftpm/
+Sabboura.swiftpm/.swiftpm/
