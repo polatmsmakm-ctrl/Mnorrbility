@@ -338,11 +338,13 @@ final class SabbouraUITests: XCTestCase {
                       "الخط لم يتحول لشكل مضبوط")
         snap("60-smart-line")
 
-        // كتابة مائلة ثم «ترتيب كل كتابة هذه الصفحة»
-        for row in [0.12, 0.2] {
-            drawLine(on: canvas, from: CGVector(dx: 0.2, dy: rowBase + row), to: CGVector(dx: 0.38, dy: rowBase + row + 0.03))
-            drawLine(on: canvas, from: CGVector(dx: 0.42, dy: rowBase + row + 0.035), to: CGVector(dx: 0.6, dy: rowBase + row + 0.065))
-            drawLine(on: canvas, from: CGVector(dx: 0.64, dy: rowBase + row + 0.07), to: CGVector(dx: 0.82, dy: rowBase + row + 0.1))
+        // سطران من «كلمات» مكتوبة على خط مائل وبمسافات غير متساوية، ثم «ترتيب كل كتابة هذه الصفحة»
+        for row in [0.14, 0.26] {
+            for (step, x) in [0.14, 0.25, 0.4, 0.48, 0.63].enumerated() {
+                let baseline = rowBase + row + CGFloat(step) * 0.012
+                drawLine(on: canvas, from: CGVector(dx: x, dy: baseline), to: CGVector(dx: x + 0.035, dy: baseline - 0.025))
+                drawLine(on: canvas, from: CGVector(dx: x + 0.035, dy: baseline - 0.025), to: CGVector(dx: x + 0.07, dy: baseline))
+            }
         }
         sleep(1)
         snap("61-before-tidy")

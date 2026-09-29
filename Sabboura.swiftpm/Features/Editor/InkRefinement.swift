@@ -588,28 +588,56 @@ enum HandwritingTidy {
         max(piece.bounds.width, piece.bounds.height) < unit * 0.45
     }
 
-    /// تقسيم الخطوط إلى أسطر حسب موضعها العمودي؛ النقاط والتشكيل تلحق بأقرب سطر.
+    /// تقسيم الخطوط إلى أسطر. نمشي من اليسار لليمين ونربط كل خط بالسطر الذي يتداخل معه عمودياً
+    /// عند آخر جزء فيه — هكذا يبقى السطر المائل سطراً واحداً. النقاط والتشكيل تلحق بأقرب سطر.
     private static func groupIntoLines(_ pieces: [Piece], unit: CGFloat) -> [[Piece]] {
-        let main = pieces.filter { !isSmall($0, unit: unit) }.sorted { $0.bounds.midY < $1.bounds.midY }
+        let main = pieces.filter { !isSmall($0, unit: unit) }.sorted { $0.bounds.midX < $1.bounds.midX }
         let small = pieces.filter { isSmall($0, unit: unit) }
         guard !main.isEmpty else { return [pieces] }
 
         var lines: [[Piece]] = []
-        var means: [CGFloat] = []
+        var tails: [CGRect] = []
         for piece in main {
-            if let mean = means.last, piece.bounds.midY - mean < unit * 0.9 {
-                lines[lines.count - 1].append(piece)
-                let group = lines[lines.count - 1]
-                means[means.count - 1] = group.reduce(0) { $0 + $1.bounds.midY } / CGFloat(group.count)
+            var best: Int?
+            var bestScore: CGFloat = 0
+            for (index, tail) in tails.enumerated() {
+                let gap = piece.bounds.minX - tail.maxX
+                guard gap < unit * 4 else { continue }
+                let overlap = min(piece.bounds.maxY, tail.maxY) - max(piece.bounds.minY, tail.minY)
+                guard overlap > min(piece.bounds.height, tail.height) * 0.3 else { continue }
+                let score = overlap - max(0, gap) * 0.1
+                if best == nil || score > bestScore {
+                    best = index
+                    bestScore = score
+                }
+            }
+            if let best {
+                let previous = lines[best].last?.bounds ?? piece.bounds
+                lines[best].append(piece)
+                tails[best] = previous.union(piece.bounds)
             } else {
                 lines.append([piece])
-                means.append(piece.bounds.midY)
+                tails.append(piece.bounds)
             }
         }
+
         for piece in small {
-            if let nearest = means.indices.min(by: { abs(means[$0] - piece.bounds.midY) < abs(means[$1] - piece.bounds.midY) }) {
-                lines[nearest].append(piece)
+            var nearestLine: Int?
+            var nearestDistance = CGFloat.greatestFiniteMagnitude
+            for (index, line) in lines.enumerated() {
+                // أقرب جزء أفقياً في هذا السطر، ثم البعد العمودي عنه
+                guard let neighbour = line.min(by: {
+                    abs($0.bounds.midX - piece.bounds.midX) < abs($1.bounds.midX - piece.bounds.midX)
+                }) else { continue }
+                let horizontal = max(0, abs(neighbour.bounds.midX - piece.bounds.midX) - neighbour.bounds.width / 2)
+                let vertical = max(0, neighbour.bounds.minY - piece.bounds.midY, piece.bounds.midY - neighbour.bounds.maxY)
+                let distance = vertical + horizontal * 0.3
+                if distance < nearestDistance {
+                    nearestDistance = distance
+                    nearestLine = index
+                }
             }
+            if let nearestLine { lines[nearestLine].append(piece) }
         }
         return lines
     }
