@@ -198,6 +198,8 @@ private struct FlashcardsView: View {
     @State private var order: [UUID] = []
     @State private var position = 0
     @State private var flipped = false
+    /// نصف القلبة: البطاقة تنضغط أفقياً ثم تنفتح بالوجه الآخر (بدون نص معكوس)
+    @State private var turning = false
     @State private var onlyUnknown = false
 
     private var cards: [StudyCard] {
@@ -256,7 +258,7 @@ private struct FlashcardsView: View {
     private func card(_ card: StudyCard) -> some View {
         let text = flipped ? card.back : card.front
         return Button {
-            withAnimation(.spring(duration: 0.45)) { flipped.toggle() }
+            flip()
         } label: {
             VStack(spacing: 14) {
                 Text(flipped ? "الإجابة" : "السؤال")
@@ -278,11 +280,20 @@ private struct FlashcardsView: View {
             .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .stroke(flipped ? Color.green.opacity(0.6) : theme.border, lineWidth: 1.5))
             .shadow(color: .black.opacity(theme.isDark ? 0.35 : 0.08), radius: 14, y: 6)
-            .rotation3DEffect(.degrees(flipped ? 360 : 0), axis: (x: 0, y: 1, z: 0))
+            .scaleEffect(x: turning ? 0.02 : 1, y: turning ? 0.96 : 1)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(text)
         .accessibilityIdentifier("flashcard")
+    }
+
+    private func flip() {
+        guard !turning else { return }
+        withAnimation(.easeIn(duration: 0.14)) { turning = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.14) {
+            flipped.toggle()
+            withAnimation(.easeOut(duration: 0.18)) { turning = false }
+        }
     }
 
     private var controls: some View {
