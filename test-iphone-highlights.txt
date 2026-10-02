@@ -1,0 +1,19 @@
+Test Case '-[SabbouraUITests.SabbouraUITests test1_FullFlow]' started.
+Test Case '-[SabbouraUITests.SabbouraUITests test1_FullFlow]' passed (344.343 seconds).
+Test Case '-[SabbouraUITests.SabbouraUITests test2_Themes]' started.
+Test Case '-[SabbouraUITests.SabbouraUITests test2_Themes]' passed (94.282 seconds).
+Test Case '-[SabbouraUITests.SabbouraUITests test3_PDFImport]' started.
+Test Case '-[SabbouraUITests.SabbouraUITests test3_PDFImport]' passed (110.511 seconds).
+Test Case '-[SabbouraUITests.SabbouraUITests test4_Persistence]' started.
+Test Case '-[SabbouraUITests.SabbouraUITests test4_Persistence]' passed (70.675 seconds).
+Test Case '-[SabbouraUITests.SabbouraUITests test5_HomeAndStudy]' started.
+Test Case '-[SabbouraUITests.SabbouraUITests test5_HomeAndStudy]' passed (27.808 seconds).
+Test Case '-[SabbouraUITests.SabbouraUITests test6_SmartInk]' started.
+Test Case '-[SabbouraUITests.SabbouraUITests test6_SmartInk]' passed (71.296 seconds).
+Test Case '-[SabbouraUITests.SabbouraUITests test7_Images]' started.
+Test Case '-[SabbouraUITests.SabbouraUITests test7_Images]' passed (52.215 seconds).
+Test Case '-[SabbouraUITests.SabbouraUITests test8_Review]' started.
+Test Case '-[SabbouraUITests.SabbouraUITests test8_Review]' passed (125.480 seconds).
+	 Executed 8 tests, with 0 failures (0 unexpected) in 896.611 (896.618) seconds
+	 Executed 8 tests, with 0 failures (0 unexpected) in 896.611 (896.620) seconds
+	 Executed 8 tests, with 0 failures (0 unexpected) in 896.611 (896.621) seconds

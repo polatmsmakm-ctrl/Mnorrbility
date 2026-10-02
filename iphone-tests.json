@@ -1,0 +1,116 @@
+{
+  "devices" : [
+    {
+      "architecture" : "arm64",
+      "deviceId" : "291E4B86-C951-41A7-8327-84BF0304D0A9",
+      "deviceName" : "iPhone 16 Pro",
+      "modelName" : "iPhone 16 Pro",
+      "osBuildNumber" : "23C54",
+      "osVersion" : "26.2",
+      "platform" : "iOS Simulator"
+    }
+  ],
+  "testNodes" : [
+    {
+      "children" : [
+        {
+          "children" : [
+            {
+              "children" : [
+                {
+                  "duration" : "5m 44s",
+                  "durationInSeconds" : 344.343160033226,
+                  "name" : "test1_FullFlow()",
+                  "nodeIdentifier" : "SabbouraUITests/test1_FullFlow()",
+                  "nodeIdentifierURL" : "test://com.apple.xcode/Sabboura/SabbouraUITests/SabbouraUITests/test1_FullFlow",
+                  "nodeType" : "Test Case",
+                  "result" : "Passed"
+                },
+                {
+                  "duration" : "1m 34s",
+                  "durationInSeconds" : 94.28232502937317,
+                  "name" : "test2_Themes()",
+                  "nodeIdentifier" : "SabbouraUITests/test2_Themes()",
+                  "nodeIdentifierURL" : "test://com.apple.xcode/Sabboura/SabbouraUITests/SabbouraUITests/test2_Themes",
+                  "nodeType" : "Test Case",
+                  "result" : "Passed"
+                },
+                {
+                  "duration" : "1m 50s",
+                  "durationInSeconds" : 110.51064205169678,
+                  "name" : "test3_PDFImport()",
+                  "nodeIdentifier" : "SabbouraUITests/test3_PDFImport()",
+                  "nodeIdentifierURL" : "test://com.apple.xcode/Sabboura/SabbouraUITests/SabbouraUITests/test3_PDFImport",
+                  "nodeType" : "Test Case",
+                  "result" : "Passed"
+                },
+                {
+                  "duration" : "1m 10s",
+                  "durationInSeconds" : 70.67523801326752,
+                  "name" : "test4_Persistence()",
+                  "nodeIdentifier" : "SabbouraUITests/test4_Persistence()",
+                  "nodeIdentifierURL" : "test://com.apple.xcode/Sabboura/SabbouraUITests/SabbouraUITests/test4_Persistence",
+                  "nodeType" : "Test Case",
+                  "result" : "Passed"
+                },
+                {
+                  "duration" : "27s",
+                  "durationInSeconds" : 27.808297991752625,
+                  "name" : "test5_HomeAndStudy()",
+                  "nodeIdentifier" : "SabbouraUITests/test5_HomeAndStudy()",
+                  "nodeIdentifierURL" : "test://com.apple.xcode/Sabboura/SabbouraUITests/SabbouraUITests/test5_HomeAndStudy",
+                  "nodeType" : "Test Case",
+                  "result" : "Passed"
+                },
+                {
+                  "duration" : "1m 11s",
+                  "durationInSeconds" : 71.29595696926117,
+                  "name" : "test6_SmartInk()",
+                  "nodeIdentifier" : "SabbouraUITests/test6_SmartInk()",
+                  "nodeIdentifierURL" : "test://com.apple.xcode/Sabboura/SabbouraUITests/SabbouraUITests/test6_SmartInk",
+                  "nodeType" : "Test Case",
+                  "result" : "Passed"
+                },
+                {
+                  "duration" : "52s",
+                  "durationInSeconds" : 52.21535408496857,
+                  "name" : "test7_Images()",
+                  "nodeIdentifier" : "SabbouraUITests/test7_Images()",
+                  "nodeIdentifierURL" : "test://com.apple.xcode/Sabboura/SabbouraUITests/SabbouraUITests/test7_Images",
+                  "nodeType" : "Test Case",
+                  "result" : "Passed"
+                },
+                {
+                  "duration" : "2m 5s",
+                  "durationInSeconds" : 125.48023593425751,
+                  "name" : "test8_Review()",
+                  "nodeIdentifier" : "SabbouraUITests/test8_Review()",
+                  "nodeIdentifierURL" : "test://com.apple.xcode/Sabboura/SabbouraUITests/SabbouraUITests/test8_Review",
+                  "nodeType" : "Test Case",
+                  "result" : "Passed"
+                }
+              ],
+              "name" : "SabbouraUITests",
+              "nodeIdentifierURL" : "test://com.apple.xcode/Sabboura/SabbouraUITests/SabbouraUITests",
+              "nodeType" : "Test Suite",
+              "result" : "Passed"
+            }
+          ],
+          "name" : "SabbouraUITests",
+          "nodeIdentifierURL" : "test://com.apple.xcode/Sabboura/SabbouraUITests",
+          "nodeType" : "UI test bundle",
+          "result" : "Passed"
+        }
+      ],
+      "name" : "Sabboura",
+      "nodeType" : "Test Plan",
+      "result" : "Passed"
+    }
+  ],
+  "testPlanConfigurations" : [
+    {
+      "configurationId" : "1",
+      "configurationName" : "Test Scheme Action"
+    }
+  ]
+}
