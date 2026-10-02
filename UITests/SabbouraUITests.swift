@@ -263,6 +263,18 @@ final class SabbouraUITests: XCTestCase {
         snap("33-share-png")
         dismissShareSheet()
 
+        // المراجعة من ملف PDF مستورد (صفحة إنجليزية وصفحة عربية)
+        tap(app.buttons["studyButton"], "studyButton (pdf)")
+        let pdfCard = app.descendants(matching: .any)["flashcard"].firstMatch
+        XCTAssertTrue(pdfCard.waitForExistence(timeout: 40), "بطاقات المراجعة لم تُجهَّز من ملف PDF")
+        sleep(1)
+        snap("35-review-pdf")
+        tap(app.buttons["studyTab.quiz"], "studyTab.quiz (pdf)")
+        sleep(1)
+        snap("36-review-pdf-quiz")
+        tap(app.buttons["studyClose"], "studyClose (pdf)")
+        sleep(1)
+
         tap(app.buttons["editorBack"], "editorBack")
         sleep(1)
         goToSidebar()
@@ -414,6 +426,70 @@ final class SabbouraUITests: XCTestCase {
         waitForShareSheet()
         dismissShareSheet()
         assertAppAlive("الصور")
+    }
+
+    /// المراجعة الذكية: بطاقات حفظ وكويز وملخص تتولد من كلام المذكرة.
+    func test8_Review() {
+        launch(reset: true, extra: ["-uitest-dark"])
+        openFolder()
+        newNote()
+        let canvas = canvasElement()
+        XCTAssertTrue(canvas.waitForExistence(timeout: 10))
+        tap(app.buttons["tool.text"], "tool.text")
+        canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: rowBase + 0.05)).tap()
+        let field = app.textViews["itemText"]
+        if field.waitForExistence(timeout: 5) {
+            field.tap()
+            field.typeText("Photosynthesis is the process plants use to make food from sunlight. "
+                           + "Chlorophyll is the green pigment that absorbs light. "
+                           + "The mitochondria is the powerhouse of the cell. "
+                           + "Osmosis is the movement of water across a membrane. "
+                           + "The nucleus contains the genetic material of the cell. "
+                           + "Respiration releases energy from glucose in every living cell.")
+            tap(app.buttons["itemDone"], "itemDone")
+        } else {
+            XCTFail("نافذة النص لم تظهر")
+        }
+        tap(app.buttons["tool.pen"], "tool.pen")
+        sleep(1)
+
+        tap(app.buttons["studyButton"], "studyButton")
+        let card = app.descendants(matching: .any)["flashcard"].firstMatch
+        XCTAssertTrue(card.waitForExistence(timeout: 30), "بطاقات المراجعة لم تُجهَّز")
+        sleep(1)
+        snap("80-review-card")
+        card.tap()
+        sleep(1)
+        snap("81-review-card-back")
+        tap(app.buttons["cardKnown"], "cardKnown")
+        tap(app.buttons["cardUnknown"], "cardUnknown")
+
+        tap(app.buttons["studyTab.quiz"], "studyTab.quiz")
+        tap(app.buttons["quizOption.0"], "quizOption.0")
+        XCTAssertTrue(app.descendants(matching: .any)["quizFeedback"].waitForExistence(timeout: 4), "الكويز لم يُظهر الإجابة")
+        snap("82-review-quiz")
+        tap(app.buttons["quizNext"], "quizNext")
+
+        tap(app.buttons["studyTab.summary"], "studyTab.summary")
+        XCTAssertTrue(app.descendants(matching: .any)["studyEngine"].waitForExistence(timeout: 4), "الملخص لم يظهر")
+        sleep(1)
+        snap("83-review-summary")
+        tap(app.buttons["studyClose"], "studyClose")
+        sleep(1)
+        XCTAssertTrue(canvas.exists, "لم يرجع للمذكرة بعد إغلاق المراجعة")
+
+        // من قائمة المذكرة في المجلد
+        tap(app.buttons["editorBack"], "editorBack")
+        sleep(2)
+        let noteCard = app.buttons.matching(identifier: "noteCard").firstMatch
+        XCTAssertTrue(noteCard.waitForExistence(timeout: 5))
+        noteCard.press(forDuration: 1.3)
+        tap(app.buttons["مراجعة: بطاقات وكويز"], "review from context menu")
+        XCTAssertTrue(app.descendants(matching: .any)["flashcard"].firstMatch.waitForExistence(timeout: 20),
+                      "المراجعة لم تفتح من قائمة المذكرة")
+        snap("84-review-from-menu")
+        tap(app.buttons["studyClose"], "studyClose")
+        assertAppAlive("المراجعة الذكية")
     }
 
     // MARK: - أدوات مساعدة

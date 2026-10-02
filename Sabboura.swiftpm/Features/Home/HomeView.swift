@@ -105,6 +105,7 @@ struct HomeView: View {
                   let note = DataStore.createNote(fromPDF: file.data, fileName: file.name, in: nil, context: context) else { return }
             appState.select(.notes)
             appState.path.append(note)
+            StudyService.shared.noteDidChange(note, delay: 2)
         }
     }
 

@@ -55,6 +55,8 @@ class CDNote: NSManagedObject {
     @NSManaged var isFavorite: Bool
     @NSManaged var deletedAt: Date?
     @NSManaged var lastOpenedAt: Date?
+    /// بطاقات الحفظ والكويز (JSON)
+    @NSManaged var studyData: Data?
     @NSManaged var subject: CDSubject?
     @NSManaged var pages: NSSet?
     @NSManaged var attachments: NSSet?
@@ -186,6 +188,31 @@ extension CDNote {
     var pageCount: Int { isAlive ? (pages?.count ?? 0) : 0 }
     var attachmentCount: Int { isAlive ? (attachments?.count ?? 0) : 0 }
     var isTrashed: Bool { isAlive && deletedAt != nil }
+
+    /// بطاقات الحفظ والكويز المحفوظة لهذه المذكرة.
+    var studySet: StudySet? {
+        get {
+            guard isAlive, let studyData else { return nil }
+            return try? JSONDecoder().decode(StudySet.self, from: studyData)
+        }
+        set {
+            guard isAlive else { return }
+            studyData = newValue.flatMap { try? JSONEncoder().encode($0) }
+        }
+    }
+
+    /// بصمة المحتوى: تتغير كلما تغيّرت الصفحات أو الكتابة.
+    var contentSignature: String {
+        guard isAlive else { return "" }
+        let stamp = Int((updatedAt ?? createdAt ?? .distantPast).timeIntervalSince1970)
+        return "\(stamp)-\(pageCount)-\(attachmentCount)"
+    }
+
+    /// المراجعة موجودة لكن المذكرة تغيّرت بعدها.
+    var isStudyStale: Bool {
+        guard let set = studySet else { return true }
+        return set.signature != contentSignature
+    }
 
     /// كل المذكرات غير المحذوفة، الأحدث تعديلاً أولاً.
     static func liveRequest() -> NSFetchRequest<CDNote> {

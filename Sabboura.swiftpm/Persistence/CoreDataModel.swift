@@ -39,7 +39,8 @@ enum CoreDataModel {
             attribute("thumbnailData", .binaryDataAttributeType, externalStorage: true),
             attribute("isFavorite", .booleanAttributeType, defaultValue: false),
             attribute("deletedAt", .dateAttributeType),
-            attribute("lastOpenedAt", .dateAttributeType)
+            attribute("lastOpenedAt", .dateAttributeType),
+            attribute("studyData", .binaryDataAttributeType, externalStorage: true)
         ]
 
         page.properties = [

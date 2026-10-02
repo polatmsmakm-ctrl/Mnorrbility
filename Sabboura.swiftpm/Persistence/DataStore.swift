@@ -376,15 +376,39 @@ enum DataStore {
     /// ملف PDF تجريبي من صفحتين (يُستخدم في الاختبار الآلي).
     static func samplePDF() -> Data {
         let bounds = CGRect(x: 0, y: 0, width: 595, height: 842)
+        let pages: [(title: String, lines: [String], arabic: Bool)] = [
+            ("Sample PDF — page 1", [
+                "Photosynthesis is the process plants use to turn sunlight into chemical energy.",
+                "Chlorophyll is the green pigment that absorbs light in the leaves.",
+                "The Calvin cycle produces glucose from carbon dioxide.",
+                "Stomata are tiny openings that allow gas exchange in leaves.",
+                "Plants release oxygen as a by-product of photosynthesis."
+            ], false),
+            ("Sample PDF — page 2", [
+                "الخلية هي الوحدة الأساسية لبناء الكائنات الحية.",
+                "النواة هي مركز التحكم في الخلية وتحتوي على المادة الوراثية.",
+                "الميتوكوندريا هي مصنع الطاقة في الخلية.",
+                "الغشاء الخلوي يتحكم في دخول المواد وخروجها من الخلية.",
+                "اكتشف العالم روبرت هوك الخلية عام 1665."
+            ], true)
+        ]
         return UIGraphicsPDFRenderer(bounds: bounds).pdfData { context in
-            for number in 1...2 {
+            for page in pages {
                 context.beginPage()
-                let title = "Sample PDF — page \(number)" as NSString
-                title.draw(at: CGPoint(x: 60, y: 70),
-                           withAttributes: [.font: UIFont.boldSystemFont(ofSize: 30),
-                                            .foregroundColor: UIColor.black])
+                (page.title as NSString).draw(at: CGPoint(x: 60, y: 70),
+                                             withAttributes: [.font: UIFont.boldSystemFont(ofSize: 30),
+                                                              .foregroundColor: UIColor.black])
                 UIColor.systemTeal.withAlphaComponent(0.35).setFill()
                 UIBezierPath(roundedRect: CGRect(x: 60, y: 140, width: 475, height: 220), cornerRadius: 18).fill()
+                let paragraph = NSMutableParagraphStyle()
+                paragraph.alignment = page.arabic ? .right : .left
+                paragraph.baseWritingDirection = page.arabic ? .rightToLeft : .leftToRight
+                paragraph.lineSpacing = 4
+                let body = page.lines.joined(separator: "\n")
+                (body as NSString).draw(in: CGRect(x: 76, y: 152, width: 443, height: 200),
+                                        withAttributes: [.font: UIFont.systemFont(ofSize: 15),
+                                                         .foregroundColor: UIColor.black,
+                                                         .paragraphStyle: paragraph])
                 UIColor.darkGray.setStroke()
                 for line in 0..<12 {
                     let y = 420 + CGFloat(line) * 30

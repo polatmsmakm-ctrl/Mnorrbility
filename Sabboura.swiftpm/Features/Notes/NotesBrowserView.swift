@@ -46,6 +46,7 @@ struct NotesBrowserView: View {
     @State private var showPDFImporter = false
     @State private var folderSheet: SubjectSheetTarget? = nil
     @State private var confirmDeleteFolder = false
+    @State private var studyNote: CDNote? = nil
 
     private var viewMode: NotesViewMode { NotesViewMode(rawValue: viewModeRaw) ?? .grid }
     private var sort: NotesSort { NotesSort(rawValue: sortRaw) ?? .modified }
@@ -176,6 +177,13 @@ struct NotesBrowserView: View {
             }
             .environment(\.managedObjectContext, context)
             .environmentObject(appState)
+            .environmentObject(themeSettings)
+        }
+        .sheet(item: $studyNote) { note in
+            ThemedContainer {
+                NoteStudyView(note: note)
+            }
+            .environment(\.managedObjectContext, context)
             .environmentObject(themeSettings)
         }
     }
@@ -417,6 +425,12 @@ struct NotesBrowserView: View {
         }
         Button {
             guard note.isAlive else { return }
+            studyNote = note
+        } label: {
+            Label("مراجعة: بطاقات وكويز", systemImage: "rectangle.on.rectangle.angled")
+        }
+        Button {
+            guard note.isAlive else { return }
             DataStore.duplicateNote(note, context: context)
         } label: {
             Label("تكرار", systemImage: "plus.square.on.square")
@@ -481,6 +495,7 @@ struct NotesBrowserView: View {
         let target = folder?.isAlive == true ? folder : nil
         if let note = DataStore.createNote(fromPDF: file.data, fileName: file.name, in: target, context: context) {
             appState.path.append(note)
+            StudyService.shared.noteDidChange(note, delay: 2)
         }
     }
 

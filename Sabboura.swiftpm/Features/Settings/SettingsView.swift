@@ -7,12 +7,13 @@ struct SettingsView: View {
     @Environment(\.appTheme) private var theme
 
     enum Page: String, CaseIterable, Identifiable {
-        case appearance, editor, trash, about
+        case appearance, editor, review, trash, about
         var id: String { rawValue }
         var title: String {
             switch self {
             case .appearance: return "المظهر"
             case .editor: return "محرر الملاحظات"
+            case .review: return "المراجعة الذكية"
             case .trash: return "المحذوفة مؤخراً"
             case .about: return "حول التطبيق"
             }
@@ -21,6 +22,7 @@ struct SettingsView: View {
             switch self {
             case .appearance: return "paintbrush"
             case .editor: return "pencil.and.outline"
+            case .review: return "rectangle.on.rectangle.angled"
             case .trash: return "trash"
             case .about: return "info.circle"
             }
@@ -51,6 +53,7 @@ struct SettingsView: View {
                 switch page {
                 case .appearance: AppearanceSettingsView()
                 case .editor: EditorSettingsView()
+                case .review: ReviewSettingsView()
                 case .trash: TrashView()
                 case .about: AboutView()
                 case .none: AppearanceSettingsView()

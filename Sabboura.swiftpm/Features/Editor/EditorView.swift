@@ -25,6 +25,7 @@ struct EditorView: View {
     @State private var showRename = false
     @State private var renameText = ""
     @State private var confirmDeletePage = false
+    @State private var showStudy = false
 
     init(note: CDNote) {
         self.note = note
@@ -104,11 +105,13 @@ struct EditorView: View {
                     controller.insertImages(images.map(\.data))
                     if !others.isEmpty { controller.importFiles(others, asPages: true) }
                     pendingFiles = []
+                    contentImported()
                 }
             }
             Button("كصفحات يمكن الكتابة فوقها") {
                 controller.importFiles(pendingFiles, asPages: true)
                 pendingFiles = []
+                contentImported()
             }
             Button("كمرفق فقط") {
                 controller.importFiles(pendingFiles, asPages: false)
@@ -144,6 +147,9 @@ struct EditorView: View {
         .sheet(item: $controller.editingItem) { target in
             ItemEditorSheet(target: target, controller: controller)
         }
+        .sheet(isPresented: $showStudy) {
+            NoteStudyView(note: note)
+        }
         .onAppear {
             appState.noteDebug("editor appear")
             appState.hideStatusBar = !controller.showStatusBar
@@ -159,6 +165,8 @@ struct EditorView: View {
             appState.hideStatusBar = false
             controller.stopRecordingIfNeeded()
             controller.flush()
+            // المذكرة تغيّرت؟ نجهّز بطاقات الحفظ والكويز في الخلفية
+            StudyService.shared.noteDidChange(note)
         }
         .onChange(of: controller.showStatusBar) { _, show in
             appState.hideStatusBar = !show
@@ -238,6 +246,10 @@ struct EditorView: View {
             }
             clusterButton("arrow.uturn.forward", label: "إعادة", id: "redo", enabled: controller.canRedo) {
                 controller.redo()
+            }
+            clusterButton("rectangle.on.rectangle.angled", label: "مراجعة: بطاقات وكويز", id: "studyButton") {
+                controller.flush()
+                showStudy = true
             }
             shareMenu
             moreMenu
@@ -470,8 +482,10 @@ struct EditorView: View {
         guard !files.isEmpty else { return }
         if fileImportMode == .images {
             controller.insertImages(files.map(\.data))
+            contentImported()
         } else if fileImportMode == .pdfPages {
             controller.importFiles(files, asPages: true)
+            contentImported()
         } else if files.contains(where: { $0.isPDF || $0.isImage }) {
             pendingFiles = files
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
@@ -480,6 +494,11 @@ struct EditorView: View {
         } else {
             controller.importFiles(files, asPages: false)
         }
+    }
+
+    /// ملف أو صور جديدة في المذكرة: نجهّز المراجعة في الخلفية.
+    private func contentImported() {
+        StudyService.shared.noteDidChange(note, delay: 2.5)
     }
 
     private func rename() {

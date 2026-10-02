@@ -188,6 +188,11 @@ struct RootView: View {
             DataStore.purgeOldTrash(context)
             themeSettings.applyKeepAwake()
             study.refresh()
+            // المذكرات التي تغيّرت ولم تُجهَّز مراجعتها بعد
+            if !AppEnvironment.isUITest {
+                try? await Task.sleep(nanoseconds: 6_000_000_000)
+                StudyService.shared.sweep()
+            }
         }
         .onChange(of: scenePhase) { _, phase in
             if phase != .active {
@@ -213,6 +218,7 @@ struct RootView: View {
               let note = DataStore.createNote(fromPDF: pdfData, fileName: name, in: nil, context: context) else { return }
         appState.selection = .notes
         appState.open(note)
+        StudyService.shared.noteDidChange(note, delay: 2)
     }
 }
 
