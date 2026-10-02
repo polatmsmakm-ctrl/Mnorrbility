@@ -46,7 +46,7 @@ struct NotesBrowserView: View {
     @State private var showPDFImporter = false
     @State private var folderSheet: SubjectSheetTarget? = nil
     @State private var confirmDeleteFolder = false
-    @State private var studyNote: CDNote? = nil
+    @State private var studyNote: StudyTarget? = nil
 
     private var viewMode: NotesViewMode { NotesViewMode(rawValue: viewModeRaw) ?? .grid }
     private var sort: NotesSort { NotesSort(rawValue: sortRaw) ?? .modified }
@@ -179,9 +179,9 @@ struct NotesBrowserView: View {
             .environmentObject(appState)
             .environmentObject(themeSettings)
         }
-        .sheet(item: $studyNote) { note in
+        .sheet(item: $studyNote) { target in
             ThemedContainer {
-                NoteStudyView(note: note)
+                NoteStudyView(note: target.note)
             }
             .environment(\.managedObjectContext, context)
             .environmentObject(themeSettings)
@@ -425,7 +425,7 @@ struct NotesBrowserView: View {
         }
         Button {
             guard note.isAlive else { return }
-            studyNote = note
+            studyNote = StudyTarget(note: note)
         } label: {
             Label("مراجعة: بطاقات وكويز", systemImage: "rectangle.on.rectangle.angled")
         }
@@ -670,4 +670,10 @@ enum FileImportReader {
         }
         return files
     }
+}
+
+/// مذكرة تُفتح مراجعتها في نافذة.
+struct StudyTarget: Identifiable {
+    let note: CDNote
+    var id: NSManagedObjectID { note.objectID }
 }
