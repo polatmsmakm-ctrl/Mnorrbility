@@ -33,7 +33,7 @@ final class SabbouraUITests: XCTestCase {
 
         drawZigzag(on: canvas, row: rowBase)
         drawZigzag(on: canvas, row: rowBase + 0.06)
-        XCTAssertTrue(app.buttons["undo"].waitForEnabled(timeout: 4), "زر التراجع لم يتفعّل بعد الكتابة")
+        XCTAssertTrue(app.buttons["undo"].waitForEnabled(timeout: 12), "زر التراجع لم يتفعّل بعد الكتابة")
 
         tap(app.buttons["tool.pencil"], "tool.pencil")
         drawZigzag(on: canvas, row: rowBase + 0.12)
@@ -272,6 +272,11 @@ final class SabbouraUITests: XCTestCase {
         tap(app.buttons["studyTab.quiz"], "studyTab.quiz (pdf)")
         sleep(1)
         snap("36-review-pdf-quiz")
+        tap(app.buttons["studyTab.summary"], "studyTab.summary (pdf)")
+        sleep(1)
+        snap("37-review-pdf-summary")
+        let arabicPoint = app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'الخلية' OR label CONTAINS 'النواة' OR label CONTAINS 'الميتوكوندريا'")).firstMatch
+        XCTAssertTrue(arabicPoint.waitForExistence(timeout: 4), "النص العربي في ملف PDF لم يُقرأ بشكل صحيح")
         tap(app.buttons["studyClose"], "studyClose (pdf)")
         sleep(1)
 

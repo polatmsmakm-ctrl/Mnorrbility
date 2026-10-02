@@ -102,6 +102,8 @@ enum NoteContentReader {
             var pdfText = ""
             if let id = source.pdfSourceID, let page = documents[id]?.page(at: source.pdfPageIndex) {
                 pdfText = clean(page.string ?? "")
+                // بعض ملفات PDF العربية تخرج حروفها مشوّهة عند القراءة؛ نقرأ صورة الصفحة بدلاً منها
+                if looksGarbled(pdfText) { pdfText = "" }
                 if !pdfText.isEmpty { parts.append(pdfText) }
             }
             let hasInk = hasStrokes(source.snapshot.drawingData)
@@ -170,6 +172,22 @@ enum NoteContentReader {
         let bare = PageSnapshot(size: snapshot.size, background: snapshot.background, pdfPage: snapshot.pdfPage,
                                 drawingData: nil, items: [], images: [:])
         return PageRenderer.image(for: bare, targetWidth: 1500, scale: 1).cgImage
+    }
+
+    /// نص عربي مستخرج بشكل خاطئ: كلمات عربية تختلط فيها حروف لاتينية أو أرقام أو رموز.
+    static func looksGarbled(_ text: String) -> Bool {
+        var arabicWords = 0
+        var mixed = 0
+        for word in text.split(whereSeparator: { $0 == " " || $0 == "\n" }) {
+            let scalars = Array(word.unicodeScalars)
+            guard scalars.contains(where: { (0x0600...0x06FF).contains($0.value) }) else { continue }
+            arabicWords += 1
+            let inner = scalars.count > 2 ? Array(scalars[1..<(scalars.count - 1)]) : scalars
+            let foreign = scalars.contains { (0x41...0x5A).contains($0.value) || (0x61...0x7A).contains($0.value) || (0x30...0x39).contains($0.value) }
+                || inner.contains { CharacterSet.punctuationCharacters.contains($0) || CharacterSet.symbols.contains($0) }
+            if foreign { mixed += 1 }
+        }
+        return arabicWords >= 5 && Double(mixed) / Double(arabicWords) > 0.12
     }
 
     /// تنظيف نص PDF: أشكال الحروف العربية المتصلة تتحول لحروفها الأصلية، والمسافات تتوحد.

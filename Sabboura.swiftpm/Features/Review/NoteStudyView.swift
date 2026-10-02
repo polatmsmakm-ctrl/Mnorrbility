@@ -434,11 +434,12 @@ private struct QuizView: View {
                     .overlay(RoundedRectangle(cornerRadius: 14).stroke(stroke(for: index, question: question), lineWidth: 1.5))
                 }
                 .buttonStyle(.plain)
+                .environment(\.layoutDirection, set.isArabic ? .rightToLeft : .leftToRight)
                 .accessibilityIdentifier("quizOption.\(index)")
             }
 
             if let selected {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: set.isArabic ? .trailing : .leading, spacing: 8) {
                     Label(selected == question.answerIndex ? "إجابة صحيحة!" : "الإجابة الصحيحة: \(question.options[question.answerIndex])",
                           systemImage: selected == question.answerIndex ? "checkmark.seal.fill" : "lightbulb.fill")
                         .font(.headline)
@@ -450,6 +451,8 @@ private struct QuizView: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: set.isArabic ? .trailing : .leading)
+                .environment(\.layoutDirection, set.isArabic ? .rightToLeft : .leftToRight)
                 .accessibilityIdentifier("quizFeedback")
                 Button {
                     next()
