@@ -152,13 +152,23 @@ enum NoteContentReader {
         return !drawing.strokes.isEmpty
     }
 
-    /// صورة الحبر فقط على خلفية بيضاء بدقة مناسبة للتعرّف على النص.
+    /// صورة الحبر فقط على خلفية بيضاء، مقصوصة على المنطقة المكتوبة (أسرع بكثير في التعرّف).
     private static func inkImage(_ snapshot: PageSnapshot) -> CGImage? {
-        guard let ink = snapshot.drawingImage(scale: 1.6) else { return nil }
+        guard let data = snapshot.drawingData, let drawing = try? PKDrawing(data: data),
+              !drawing.strokes.isEmpty else { return nil }
+        let page = CGRect(origin: .zero, size: snapshot.size)
+        let area = drawing.bounds.insetBy(dx: -16, dy: -16).intersection(page)
+        guard !area.isNull, area.width > 8, area.height > 8 else { return nil }
+        let scale = min(2, 2200 / max(area.width, area.height))
+        var ink: UIImage?
+        UITraitCollection(userInterfaceStyle: .light).performAsCurrent {
+            ink = drawing.image(from: area, scale: scale)
+        }
+        guard let ink else { return nil }
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1
         format.opaque = true
-        let size = CGSize(width: snapshot.size.width * 1.6, height: snapshot.size.height * 1.6)
+        let size = CGSize(width: (area.width * scale).rounded(), height: (area.height * scale).rounded())
         let image = UIGraphicsImageRenderer(size: size, format: format).image { context in
             UIColor.white.setFill()
             context.fill(CGRect(origin: .zero, size: size))

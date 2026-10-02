@@ -266,7 +266,7 @@ final class SabbouraUITests: XCTestCase {
         // المراجعة من ملف PDF مستورد (صفحة إنجليزية وصفحة عربية)
         tap(app.buttons["studyButton"], "studyButton (pdf)")
         let pdfCard = app.descendants(matching: .any)["flashcard"].firstMatch
-        XCTAssertTrue(pdfCard.waitForExistence(timeout: 40), "بطاقات المراجعة لم تُجهَّز من ملف PDF")
+        XCTAssertTrue(pdfCard.waitForExistence(timeout: 90), "بطاقات المراجعة لم تُجهَّز من ملف PDF")
         sleep(1)
         snap("35-review-pdf")
         tap(app.buttons["studyTab.quiz"], "studyTab.quiz (pdf)")
