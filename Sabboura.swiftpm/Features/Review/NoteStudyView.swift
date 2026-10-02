@@ -1,4 +1,5 @@
 import CoreData
+import UIKit
 import SwiftUI
 
 /// شاشة مراجعة المذكرة: بطاقات حفظ، كويز، وملخص لأهم النقاط.
@@ -65,8 +66,8 @@ struct NoteStudyView: View {
         .accessibilityIdentifier("studySheet")
         .onAppear {
             guard !service.isWorking(on: note) else { return }
-            // بدون مفتاح Claude التوليد مجاني وسريع، فنحدّث تلقائياً متى تغيّرت المذكرة
-            if note.studySet == nil || (note.isStudyStale && !ReviewSettings.hasClaudeKey) {
+            // التوليد على الجهاز سريع، فنحدّث تلقائياً متى تغيّرت المذكرة
+            if note.studySet == nil || (note.isStudyStale && !ReviewSettings.usesOnline) {
                 service.generate(for: note)
             }
         }
@@ -120,7 +121,10 @@ struct NoteStudyView: View {
     @ViewBuilder
     private func banner(_ set: StudySet) -> some View {
         let isWorking = service.isWorking(on: note)
-        if isWorking || note.isStudyStale || service.notice(for: note) != nil {
+        let online = ReviewSettings.activeProvider
+        // وُلّدت على الجهاز وعنده الحين Gemini أو Claude: نعرض عليه توليد أدق
+        let canUpgrade = !set.engine.isOnline && online != .onDevice
+        if isWorking || note.isStudyStale || service.notice(for: note) != nil || canUpgrade {
             HStack(spacing: 10) {
                 if isWorking {
                     ProgressView()
@@ -128,6 +132,13 @@ struct NoteStudyView: View {
                 } else if let notice = service.notice(for: note) {
                     Image(systemName: "info.circle")
                     Text(notice)
+                } else if canUpgrade && !note.isStudyStale {
+                    Image(systemName: "sparkles")
+                    Text("تقدر تطلع أسئلة أدق بـ \(online == .gemini ? "Gemini" : "Claude")")
+                    Spacer(minLength: 4)
+                    Button("توليد") { service.generate(for: note) }
+                        .fontWeight(.semibold)
+                        .accessibilityIdentifier("studyUpgrade")
                 } else {
                     Image(systemName: "arrow.triangle.2.circlepath")
                     Text("المذكرة تغيّرت بعد آخر مراجعة")
@@ -257,34 +268,52 @@ private struct FlashcardsView: View {
 
     private func card(_ card: StudyCard) -> some View {
         let text = flipped ? card.back : card.front
-        return Button {
-            flip()
-        } label: {
-            VStack(spacing: 14) {
-                Text(flipped ? "الإجابة" : "السؤال")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(flipped ? Color.green : theme.accent)
-                Text(text)
-                    .font(.system(size: AppEnvironment.isPhone ? 20 : 24, weight: flipped ? .regular : .semibold))
-                    .foregroundStyle(theme.primaryText)
-                    .multilineTextAlignment(.center)
-                    .minimumScaleFactor(0.5)
-                    .environment(\.layoutDirection, set.isArabic ? .rightToLeft : .leftToRight)
-                Text(flipped ? "اضغط لعرض السؤال" : "اضغط لقلب البطاقة")
-                    .font(.caption)
-                    .foregroundStyle(theme.secondaryText)
+        return VStack(spacing: 14) {
+            Text(flipped ? "الإجابة" : "السؤال")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(flipped ? Color.green : theme.accent)
+            GeometryReader { geometry in
+                ScrollView {
+                    Text(text)
+                        .font(.system(size: cardFontSize(text), weight: flipped ? .regular : .semibold))
+                        .foregroundStyle(theme.primaryText)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(nil)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .environment(\.layoutDirection,
+                                     OnDeviceStudyGenerator.isMostlyArabic(text) ? .rightToLeft : .leftToRight)
+                        .frame(maxWidth: .infinity, minHeight: geometry.size.height)
+                }
+                .scrollBounceBehavior(.basedOnSize)
             }
-            .padding(26)
-            .frame(maxWidth: 640, maxHeight: .infinity)
-            .background(theme.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(flipped ? Color.green.opacity(0.6) : theme.border, lineWidth: 1.5))
-            .shadow(color: .black.opacity(theme.isDark ? 0.35 : 0.08), radius: 14, y: 6)
-            .scaleEffect(x: turning ? 0.02 : 1, y: turning ? 0.96 : 1)
+            Text(flipped ? "اضغط لعرض السؤال" : "اضغط لقلب البطاقة")
+                .font(.caption)
+                .foregroundStyle(theme.secondaryText)
         }
-        .buttonStyle(.plain)
+        .padding(26)
+        .frame(maxWidth: 640, maxHeight: .infinity)
+        .background(theme.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous)
+            .stroke(flipped ? Color.green.opacity(0.6) : theme.border, lineWidth: 1.5))
+        .shadow(color: .black.opacity(theme.isDark ? 0.35 : 0.08), radius: 14, y: 6)
+        .scaleEffect(x: turning ? 0.02 : 1, y: turning ? 0.96 : 1)
+        .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .onTapGesture { flip() }
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel(text)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { flip() }
         .accessibilityIdentifier("flashcard")
+    }
+
+    /// الخط يصغر قليلاً مع طول الكلام (والباقي يتمرّر) بدل ما ينقص.
+    private func cardFontSize(_ text: String) -> CGFloat {
+        let base: CGFloat = AppEnvironment.isPhone ? 20 : 24
+        switch text.count {
+        case ..<90: return base
+        case ..<180: return base - 3
+        default: return base - 5
+        }
     }
 
     private func flip() {
@@ -418,10 +447,11 @@ private struct QuizView: View {
             Text(question.prompt)
                 .font(.title3.weight(.semibold))
                 .foregroundStyle(theme.primaryText)
+                .multilineTextAlignment(.leading)
+                .lineLimit(nil)
                 .fixedSize(horizontal: false, vertical: true)
-                .environment(\.layoutDirection, set.isArabic ? .rightToLeft : .leftToRight)
-                .frame(maxWidth: .infinity, alignment: set.isArabic ? .trailing : .leading)
-                .multilineTextAlignment(set.isArabic ? .trailing : .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .environment(\.layoutDirection, direction(of: question.prompt))
                 .accessibilityIdentifier("quizPrompt")
 
             ForEach(Array(question.options.enumerated()), id: \.offset) { index, option in
@@ -435,6 +465,7 @@ private struct QuizView: View {
                             .font(.title3)
                         Text(option)
                             .multilineTextAlignment(.leading)
+                            .lineLimit(nil)
                             .fixedSize(horizontal: false, vertical: true)
                         Spacer(minLength: 0)
                     }
@@ -445,12 +476,12 @@ private struct QuizView: View {
                     .overlay(RoundedRectangle(cornerRadius: 14).stroke(stroke(for: index, question: question), lineWidth: 1.5))
                 }
                 .buttonStyle(.plain)
-                .environment(\.layoutDirection, set.isArabic ? .rightToLeft : .leftToRight)
+                .environment(\.layoutDirection, direction(of: option))
                 .accessibilityIdentifier("quizOption.\(index)")
             }
 
             if let selected {
-                VStack(alignment: set.isArabic ? .trailing : .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 8) {
                     Label(selected == question.answerIndex ? "إجابة صحيحة!" : "الإجابة الصحيحة: \(question.options[question.answerIndex])",
                           systemImage: selected == question.answerIndex ? "checkmark.seal.fill" : "lightbulb.fill")
                         .font(.headline)
@@ -459,11 +490,14 @@ private struct QuizView: View {
                         Text(explanation)
                             .font(.subheadline)
                             .foregroundStyle(theme.secondaryText)
+                            .multilineTextAlignment(.leading)
+                            .lineLimit(nil)
                             .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .environment(\.layoutDirection, direction(of: explanation))
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: set.isArabic ? .trailing : .leading)
-                .environment(\.layoutDirection, set.isArabic ? .rightToLeft : .leftToRight)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityIdentifier("quizFeedback")
                 Button {
                     next()
@@ -479,6 +513,10 @@ private struct QuizView: View {
                 .accessibilityIdentifier("quizNext")
             }
         }
+    }
+
+    private func direction(of text: String) -> LayoutDirection {
+        OnDeviceStudyGenerator.isMostlyArabic(text) ? .rightToLeft : .leftToRight
     }
 
     private func icon(for index: Int, question: StudyQuestion) -> String {
@@ -549,39 +587,135 @@ private struct QuizView: View {
 private struct SummaryView: View {
     let set: StudySet
     @Environment(\.appTheme) private var theme
+    @State private var copied = false
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
-                Text("أهم النقاط")
-                    .font(.title3.weight(.bold))
-                    .foregroundStyle(theme.primaryText)
-                ForEach(Array(set.summary.enumerated()), id: \.offset) { _, point in
-                    HStack(alignment: .firstTextBaseline, spacing: 10) {
-                        Circle().fill(theme.accent).frame(width: 7, height: 7)
-                        Text(point)
-                            .foregroundStyle(theme.primaryText)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .environment(\.layoutDirection, set.isArabic ? .rightToLeft : .leftToRight)
+            VStack(alignment: .leading, spacing: 18) {
+                if !set.summary.isEmpty {
+                    section("أهم النقاط", symbol: "star.fill") {
+                        ForEach(Array(set.summary.enumerated()), id: \.offset) { index, point in
+                            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                                Text("\(index + 1)")
+                                    .font(.caption.weight(.bold).monospacedDigit())
+                                    .foregroundStyle(.white)
+                                    .frame(width: 22, height: 22)
+                                    .background(theme.accent, in: Circle())
+                                fullText(point)
+                            }
+                            .environment(\.layoutDirection, direction(of: point))
+                            .accessibilityIdentifier("summaryPoint")
+                        }
                     }
                 }
-                Divider().padding(.vertical, 6)
-                Label {
-                    Text("\(set.engine == .claude ? "ولّدها Claude" : "تولّدت على الجهاز") · \(set.generatedAt.formatted(date: .abbreviated, time: .shortened))")
-                } icon: {
-                    Image(systemName: set.engine == .claude ? "sparkles" : "iphone")
+
+                if let terms = set.keyTerms, !terms.isEmpty {
+                    section("المصطلحات", symbol: "character.book.closed.fill") {
+                        ForEach(terms) { term in
+                            VStack(alignment: .leading, spacing: 4) {
+                                fullText(term.term, weight: .bold, color: theme.accent)
+                                fullText(term.definition)
+                            }
+                            .padding(.vertical, 2)
+                            .environment(\.layoutDirection, direction(of: term.definition))
+                            .accessibilityIdentifier("summaryTerm")
+                        }
+                    }
+                }
+
+                if let facts = set.facts, !facts.isEmpty {
+                    section("أرقام وتواريخ", symbol: "number.circle.fill") {
+                        ForEach(Array(facts.enumerated()), id: \.offset) { _, fact in
+                            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                                Image(systemName: "calendar")
+                                    .foregroundStyle(theme.accent)
+                                fullText(fact)
+                            }
+                            .environment(\.layoutDirection, direction(of: fact))
+                            .accessibilityIdentifier("summaryFact")
+                        }
+                    }
+                }
+
+                HStack {
+                    Label {
+                        Text("\(set.engine.isOnline ? "ولّدها \(set.engine.title)" : "تولّدت على الجهاز") · \(set.generatedAt.formatted(date: .abbreviated, time: .shortened))")
+                    } icon: {
+                        Image(systemName: set.engine.isOnline ? "sparkles" : "iphone")
+                    }
+                    .accessibilityIdentifier("studyEngine")
+                    Spacer()
+                    Button {
+                        UIPasteboard.general.string = plainText
+                        copied = true
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { copied = false }
+                    } label: {
+                        Label(copied ? "تم النسخ" : "نسخ الملخص", systemImage: copied ? "checkmark" : "doc.on.doc")
+                    }
+                    .accessibilityIdentifier("copySummary")
                 }
                 .font(.footnote)
                 .foregroundStyle(theme.secondaryText)
-                .accessibilityIdentifier("studyEngine")
                 Text("\(set.cards.count) بطاقة · \(set.questions.count) سؤال")
                     .font(.footnote)
                     .foregroundStyle(theme.secondaryText)
             }
             .padding(20)
-            .frame(maxWidth: 680, alignment: .leading)
+            .frame(maxWidth: 720, alignment: .leading)
             .frame(maxWidth: .infinity)
         }
         .accessibilityIdentifier("studySummary")
+    }
+
+    private func section<Content: View>(_ title: String, symbol: String,
+                                        @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label(title, systemImage: symbol)
+                .font(.headline)
+                .foregroundStyle(theme.primaryText)
+            VStack(alignment: .leading, spacing: 12) {
+                content()
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(theme.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(theme.border, lineWidth: 1))
+        }
+    }
+
+    private func direction(of text: String) -> LayoutDirection {
+        OnDeviceStudyGenerator.isMostlyArabic(text) ? .rightToLeft : .leftToRight
+    }
+
+    /// نص كامل بدون قص، باتجاه لغته (العربي من اليمين والإنجليزي من اليسار).
+    private func fullText(_ text: String, weight: Font.Weight = .regular, color: Color? = nil) -> some View {
+        Text(text)
+            .font(.body.weight(weight))
+            .foregroundStyle(color ?? theme.primaryText)
+            .lineLimit(nil)
+            .fixedSize(horizontal: false, vertical: true)
+            .multilineTextAlignment(.leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .environment(\.layoutDirection, direction(of: text))
+            .textSelection(.enabled)
+    }
+
+    private var plainText: String {
+        var lines: [String] = []
+        if !set.summary.isEmpty {
+            lines.append("أهم النقاط:")
+            lines += set.summary.enumerated().map { "\($0.offset + 1). \($0.element)" }
+        }
+        if let terms = set.keyTerms, !terms.isEmpty {
+            lines.append("")
+            lines.append("المصطلحات:")
+            lines += terms.map { "• \($0.term): \($0.definition)" }
+        }
+        if let facts = set.facts, !facts.isEmpty {
+            lines.append("")
+            lines.append("أرقام وتواريخ:")
+            lines += facts.map { "• \($0)" }
+        }
+        return lines.joined(separator: "\n")
     }
 }

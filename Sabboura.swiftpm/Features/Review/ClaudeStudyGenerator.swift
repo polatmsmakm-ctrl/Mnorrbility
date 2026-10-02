@@ -3,9 +3,20 @@ import Security
 
 // MARK: - إعدادات المراجعة الذكية
 
+/// من يولّد البطاقات والأسئلة.
+enum ReviewProvider: String, CaseIterable, Identifiable {
+    case onDevice
+    case gemini
+    case claude
+
+    var id: String { rawValue }
+}
+
 enum ReviewSettings {
     private static let autoKey = "sabboura.review.auto"
     private static let modelKey = "sabboura.review.model"
+    private static let providerKey = "sabboura.review.provider"
+    private static let geminiLiteKey = "sabboura.review.geminiLite"
 
     /// توليد البطاقات والكويز تلقائياً عند تغيّر المذكرة أو استيراد ملف
     static var autoGenerate: Bool {
@@ -21,12 +32,42 @@ enum ReviewSettings {
         set { UserDefaults.standard.set(newValue, forKey: modelKey) }
     }
 
+    /// Gemini Flash-Lite بدل Flash (أسرع، وحدّه المجاني أعلى)
+    static var geminiLite: Bool {
+        get { UserDefaults.standard.bool(forKey: geminiLiteKey) }
+        set { UserDefaults.standard.set(newValue, forKey: geminiLiteKey) }
+    }
+
     static var hasClaudeKey: Bool { !(KeychainStore.read(KeychainStore.claudeKey) ?? "").isEmpty }
+    static var hasGeminiKey: Bool { !(KeychainStore.read(KeychainStore.geminiKey) ?? "").isEmpty }
+
+    /// المحرّك الذي اختاره المستخدم (الافتراضي Gemini المجاني، إلا لو عنده مفتاح Claude فقط).
+    static var provider: ReviewProvider {
+        get {
+            if let raw = UserDefaults.standard.string(forKey: providerKey), let value = ReviewProvider(rawValue: raw) {
+                return value
+            }
+            return hasClaudeKey && !hasGeminiKey ? .claude : .gemini
+        }
+        set { UserDefaults.standard.set(newValue.rawValue, forKey: providerKey) }
+    }
+
+    /// المحرّك الفعلي: المختار إن كان مفتاحه محفوظاً، وإلا التوليد على الجهاز.
+    static var activeProvider: ReviewProvider {
+        switch provider {
+        case .gemini: return hasGeminiKey ? .gemini : .onDevice
+        case .claude: return hasClaudeKey ? .claude : .onDevice
+        case .onDevice: return .onDevice
+        }
+    }
+
+    static var usesOnline: Bool { activeProvider != .onDevice }
 }
 
-/// حفظ مفتاح Claude في سلسلة مفاتيح الجهاز (مشفّر، لا يخرج من الجهاز إلا لـ Anthropic).
+/// حفظ مفاتيح الخدمات في سلسلة مفاتيح الجهاز (مشفّرة، ولا تخرج إلا للخدمة نفسها).
 enum KeychainStore {
     static let claudeKey = "claude-api-key"
+    static let geminiKey = "gemini-api-key"
     private static let service = "com.sabboura.notes"
 
     static func read(_ account: String) -> String? {
@@ -81,29 +122,26 @@ enum ClaudeStudyGenerator {
                          key: String, model: String) async throws -> StudySet {
         var blocks: [[String: Any]] = []
         blocks.append(["type": "text", "text": "عنوان المذكرة: \(content.title)"])
-        var characters = 0
+        var budget = 150_000
         for page in content.pages {
-            let text = page.text.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !text.isEmpty && characters < 150_000 {
-                let clipped = String(text.prefix(150_000 - characters))
-                characters += clipped.count
-                blocks.append(["type": "text", "text": "— صفحة \(page.number) —\n\(clipped)"])
+            if let text = StudyPrompt.pageText(page, budget: &budget) {
+                blocks.append(["type": "text", "text": text])
             }
             if let image = page.imageJPEG {
-                blocks.append(["type": "text", "text": "— صورة صفحة \(page.number) (فيها خط يد أو صور) —"])
+                blocks.append(["type": "text", "text": StudyPrompt.imageLabel(page)])
                 blocks.append(["type": "image",
                                "source": ["type": "base64", "media_type": "image/jpeg",
                                           "data": image.base64EncodedString()]])
             }
         }
-        blocks.append(["type": "text", "text": instructions])
+        blocks.append(["type": "text", "text": StudyPrompt.instructions])
 
         let body: [String: Any] = [
             "model": model,
-            "max_tokens": 8000,
-            "system": "You are a careful study assistant. You turn a student's notes into accurate study materials, using only what is in the notes.",
+            "max_tokens": 12000,
+            "system": StudyPrompt.system,
             "messages": [["role": "user", "content": blocks]],
-            "output_config": ["format": ["type": "json_schema", "schema": schema]]
+            "output_config": ["format": ["type": "json_schema", "schema": StudyPrompt.jsonSchema]]
         ]
 
         var request = URLRequest(url: URL(string: "https://api.anthropic.com/v1/messages")!)
@@ -126,29 +164,12 @@ enum ClaudeStudyGenerator {
         }
 
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let content = json["content"] as? [[String: Any]],
-              let text = content.first(where: { $0["type"] as? String == "text" })?["text"] as? String,
-              let payload = text.data(using: .utf8),
-              let result = try? JSONDecoder().decode(Output.self, from: payload) else {
+              let parts = json["content"] as? [[String: Any]],
+              let text = parts.first(where: { $0["type"] as? String == "text" })?["text"] as? String,
+              let output = StudyPrompt.decode(text) else {
             throw Failure.invalidResponse
         }
-
-        let cards = result.flashcards
-            .filter { !$0.front.isEmpty && !$0.back.isEmpty }
-            .map { StudyCard(front: $0.front, back: $0.back) }
-        let questions = result.questions.compactMap { question -> StudyQuestion? in
-            let options = question.options.filter { !$0.isEmpty }
-            guard options.count >= 2, options.indices.contains(question.answer_index) else { return nil }
-            return StudyQuestion(prompt: question.question, options: options,
-                                 answerIndex: question.answer_index, explanation: question.explanation)
-        }
-        return StudySet(engine: .claude,
-                        language: result.language,
-                        generatedAt: Date(),
-                        signature: signature,
-                        summary: result.summary,
-                        cards: cards,
-                        questions: questions)
+        return StudyPrompt.makeSet(output, engine: .claude, signature: signature, fallbackLanguage: content.language)
     }
 
     /// طلب صغير جداً للتأكد من أن المفتاح يعمل.
@@ -184,62 +205,5 @@ enum ClaudeStudyGenerator {
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let error = json["error"] as? [String: Any] else { return nil }
         return error["message"] as? String
-    }
-
-    private static let instructions = """
-    Create study materials from the notes above (typed text, PDF text and the page images, which may contain handwriting).
-    Focus only on the most important points. Write everything in the same language the notes are mostly written in (if the notes are mostly Arabic, write in clear Modern Standard Arabic).
-    - language: the ISO code of that language, e.g. "ar" or "en".
-    - summary: 3 to 8 short sentences with the key points.
-    - flashcards: 8 to 20 cards. "front" is a short question or term, "back" is a concise answer (at most about 25 words).
-    - questions: 6 to 12 multiple-choice questions. Each has exactly 4 options, exactly one correct option (answer_index is its 0-based position), plausible wrong options, and a one-sentence explanation.
-    Use only information that appears in the notes; never invent facts. Skip handwriting you cannot read confidently. If the notes are very short, return fewer items.
-    """
-
-    private static let schema: [String: Any] = [
-        "type": "object",
-        "properties": [
-            "language": ["type": "string"],
-            "summary": ["type": "array", "items": ["type": "string"]],
-            "flashcards": [
-                "type": "array",
-                "items": [
-                    "type": "object",
-                    "properties": ["front": ["type": "string"], "back": ["type": "string"]],
-                    "required": ["front", "back"],
-                    "additionalProperties": false
-                ]
-            ],
-            "questions": [
-                "type": "array",
-                "items": [
-                    "type": "object",
-                    "properties": [
-                        "question": ["type": "string"],
-                        "options": ["type": "array", "items": ["type": "string"]],
-                        "answer_index": ["type": "integer"],
-                        "explanation": ["type": "string"]
-                    ],
-                    "required": ["question", "options", "answer_index", "explanation"],
-                    "additionalProperties": false
-                ]
-            ]
-        ],
-        "required": ["language", "summary", "flashcards", "questions"],
-        "additionalProperties": false
-    ]
-
-    private struct Output: Decodable {
-        struct Card: Decodable { let front: String; let back: String }
-        struct Question: Decodable {
-            let question: String
-            let options: [String]
-            let answer_index: Int
-            let explanation: String?
-        }
-        let language: String
-        let summary: [String]
-        let flashcards: [Card]
-        let questions: [Question]
     }
 }

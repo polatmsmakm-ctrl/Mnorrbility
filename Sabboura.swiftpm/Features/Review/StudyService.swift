@@ -15,7 +15,7 @@ final class StudyService: ObservableObject {
     private var queue: [NSManagedObjectID] = []
     private var isRunning = false
     private var pendingAuto: [NSManagedObjectID: Task<Void, Never>] = [:]
-    private var lastClaudeRun: [NSManagedObjectID: Date] = [:]
+    private var lastOnlineRun: [NSManagedObjectID: Date] = [:]
 
     private var context: NSManagedObjectContext { PersistenceController.shared.viewContext }
 
@@ -42,8 +42,9 @@ final class StudyService: ObservableObject {
             self.pendingAuto[id] = nil
             guard let note = try? self.context.existingObject(with: id) as? CDNote,
                   note.isAlive, note.isStudyStale else { return }
-            // لا نكرر Claude على نفس المذكرة أكثر من مرة كل ١٠ دقائق تلقائياً (توفيراً للتكلفة)
-            if ReviewSettings.hasClaudeKey, let last = self.lastClaudeRun[id],
+            // لا نكرر Gemini أو Claude على نفس المذكرة أكثر من مرة كل ١٠ دقائق تلقائياً
+            // (توفيراً للحد المجاني والتكلفة)
+            if ReviewSettings.usesOnline, let last = self.lastOnlineRun[id],
                Date().timeIntervalSince(last) < 600, note.studySet != nil {
                 return
             }
@@ -86,19 +87,31 @@ final class StudyService: ObservableObject {
         guard let note = try? context.existingObject(with: id) as? CDNote, note.isAlive,
               let read = NoteContentReader.prepare(note, context: context) else { return }
         let signature = note.contentSignature
-        let key = KeychainStore.read(KeychainStore.claudeKey) ?? ""
-        let model = ReviewSettings.claudeModel
+        let provider = ReviewSettings.activeProvider
         var notice: String?
         var result: StudySet
 
-        if !key.isEmpty {
-            working[id] = "Claude يقرأ المذكرة…"
-            lastClaudeRun[id] = Date()
+        if provider != .onDevice {
+            let name = provider == .gemini ? "Gemini" : "Claude"
+            working[id] = "\(name) يقرأ المذكرة…"
+            lastOnlineRun[id] = Date()
             let content = await background { read(.textAndImages) }
             do {
-                result = try await ClaudeStudyGenerator.generate(from: content, signature: signature, key: key, model: model)
+                switch provider {
+                case .gemini:
+                    let key = KeychainStore.read(KeychainStore.geminiKey) ?? ""
+                    result = try await GeminiStudyGenerator.generate(from: content, signature: signature,
+                                                                     key: key, lite: ReviewSettings.geminiLite)
+                default:
+                    let key = KeychainStore.read(KeychainStore.claudeKey) ?? ""
+                    result = try await ClaudeStudyGenerator.generate(from: content, signature: signature,
+                                                                     key: key, model: ReviewSettings.claudeModel)
+                }
+                if result.isEmpty { throw EmptyResult() }
             } catch {
-                notice = ((error as? LocalizedError)?.errorDescription ?? "تعذّر Claude") + " — استخدمت التوليد على الجهاز."
+                let reason = error is EmptyResult ? "\(name) ما طلّع أسئلة"
+                    : ((error as? LocalizedError)?.errorDescription ?? "تعذّر \(name)")
+                notice = reason + " — استخدمت التوليد على الجهاز."
                 working[id] = "جارٍ قراءة المذكرة على الجهاز…"
                 let local = await background { read(.textOnly) }
                 result = await background { OnDeviceStudyGenerator.generate(from: local, signature: signature) }
@@ -127,6 +140,8 @@ final class StudyService: ObservableObject {
         note.studySet = set
         DataStore.save(context)
     }
+
+    private struct EmptyResult: Error {}
 
     private func background<T>(_ work: @escaping () -> T) async -> T {
         await withCheckedContinuation { continuation in

@@ -477,6 +477,8 @@ final class SabbouraUITests: XCTestCase {
 
         tap(app.buttons["studyTab.summary"], "studyTab.summary")
         XCTAssertTrue(app.descendants(matching: .any)["studyEngine"].waitForExistence(timeout: 4), "الملخص لم يظهر")
+        let fullPoint = app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'sunlight' OR label CONTAINS 'glucose' OR label CONTAINS 'genetic material'")).firstMatch
+        XCTAssertTrue(fullPoint.waitForExistence(timeout: 4), "أهم النقاط ما ظهرت بجمل كاملة")
         sleep(1)
         snap("83-review-summary")
         tap(app.buttons["studyClose"], "studyClose")
@@ -494,6 +496,17 @@ final class SabbouraUITests: XCTestCase {
                       "المراجعة لم تفتح من قائمة المذكرة")
         snap("84-review-from-menu")
         tap(app.buttons["studyClose"], "studyClose")
+        sleep(1)
+
+        // إعدادات المراجعة: Gemini المجاني وخانة مفتاحه
+        goToSidebar()
+        tap(app.buttons["settingsButton"], "settingsButton")
+        tap(app.buttons["settings.review"], "settings.review", fallbackStaticText: "المراجعة الذكية")
+        tap(app.buttons["provider.gemini"], "provider.gemini")
+        XCTAssertTrue(app.secureTextFields["geminiKeyField"].waitForExistence(timeout: 5), "خانة مفتاح Gemini لم تظهر")
+        sleep(1)
+        snap("85-review-settings-gemini")
+        closeSettings()
         assertAppAlive("المراجعة الذكية")
     }
 

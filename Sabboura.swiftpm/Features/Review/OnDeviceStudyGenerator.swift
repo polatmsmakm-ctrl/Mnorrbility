@@ -11,17 +11,129 @@ enum OnDeviceStudyGenerator {
     static let maxQuestions = 10
 
     static func generate(from content: NoteContent, signature: String) -> StudySet {
-        let text = content.fullText
+        let text = preparedText(content)
         let arabic = isMostlyArabic(text)
         var builder = Builder(text: text, arabic: arabic, seed: stableHash(signature + text.prefix(200)))
         builder.analyze()
-        return StudySet(engine: .onDevice,
-                        language: arabic ? "ar" : (content.language.isEmpty ? "en" : content.language),
-                        generatedAt: Date(),
-                        signature: signature,
-                        summary: builder.summary(),
-                        cards: builder.cards(),
-                        questions: builder.questions())
+        let points = builder.keyPoints()
+        var set = StudySet(engine: .onDevice,
+                           language: arabic ? "ar" : (content.language.isEmpty ? "en" : content.language),
+                           generatedAt: Date(),
+                           signature: signature,
+                           summary: points,
+                           cards: builder.cards(),
+                           questions: builder.questions())
+        set.keyTerms = builder.keyTerms()
+        set.facts = builder.facts(excluding: Set(points))
+        set.version = StudySet.currentVersion
+        return set
+    }
+
+    // MARK: - تجهيز النص
+
+    /// يحذف الترويسات المتكررة في كل صفحة، ويعيد وصل الأسطر المكسورة حتى ترجع الجمل كاملة.
+    static func preparedText(_ content: NoteContent) -> String {
+        let pages = content.pages.map(\.text)
+        var repeated = Set<String>()
+        if pages.count >= 3 {
+            var counts: [String: Int] = [:]
+            for page in pages {
+                let lines = Set(page.components(separatedBy: .newlines).map(lineKey).filter { !$0.isEmpty })
+                for line in lines { counts[line, default: 0] += 1 }
+            }
+            let threshold = max(3, Int(Double(pages.count) * 0.5))
+            repeated = Set(counts.filter { $0.value >= threshold }.map(\.key))
+        }
+        let cleaned = pages.map { page in
+            page.components(separatedBy: .newlines)
+                .filter { line in
+                    let key = lineKey(line)
+                    return !(repeated.contains(key) && line.split(separator: " ").count <= 12)
+                }
+                .joined(separator: "\n")
+        }
+        return cleaned.map(reflow).filter { !$0.isEmpty }.joined(separator: "\n\n")
+    }
+
+    /// مفتاح سطر لمعرفة الترويسات المتكررة (بدون أرقام الصفحات).
+    private static func lineKey(_ line: String) -> String {
+        line.trimmingCharacters(in: .whitespaces)
+            .components(separatedBy: CharacterSet.decimalDigits).joined()
+            .lowercased()
+    }
+
+    /// يجمع الأسطر المكسورة في فقرات. السطر «الممتلئ» (بطول أسطر الصفحة المعتاد) ولا ينتهي بعلامة
+    /// نهاية جملة يعني أن الجملة انكسرت فنكملها بالسطر التالي؛ أما السطر القصير فنهاية فكرة
+    /// (مثل نقاط الشرائح والعناوين) فيبقى وحده.
+    static func reflow(_ text: String) -> String {
+        let lines = text.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespaces) }
+        let lengths = lines.filter { !$0.isEmpty }.map(\.count).sorted()
+        guard lengths.count >= 2 else { return lines.filter { !$0.isEmpty }.joined(separator: "\n") }
+        let fullLength = Double(lengths[Int(Double(lengths.count - 1) * 0.8)])
+        let enders: Set<Character> = [".", "!", "?", "؟", "…", ":", "؛", ";", "۔"]
+
+        var paragraphs: [String] = []
+        var current = ""
+        var previousLength = 0
+        for line in lines {
+            if line.isEmpty {
+                if !current.isEmpty { paragraphs.append(current) }
+                current = ""
+                continue
+            }
+            if current.isEmpty {
+                current = line
+                previousLength = line.count
+                continue
+            }
+            let endsSentence = current.last.map { enders.contains($0) } ?? false
+            // السطر المكسور يكون طويلاً (بعرض الصفحة)، أو يبدأ التالي بحرف إنجليزي صغير
+            let startsLowercase = line.first.map { $0.isLowercase } ?? false
+            let wrapped = Double(previousLength) >= max(fullLength * 0.72, 40) || startsLowercase
+            if !endsSentence && wrapped && !isListItem(line) {
+                if current.hasSuffix("-"), let before = current.dropLast().last, before.isLetter, !isArabicWord(String(before)) {
+                    current.removeLast()
+                    current += line
+                } else {
+                    current += " " + line
+                }
+            } else {
+                paragraphs.append(current)
+                current = line
+            }
+            previousLength = line.count
+        }
+        if !current.isEmpty { paragraphs.append(current) }
+        return paragraphs.joined(separator: "\n")
+    }
+
+    /// الجملة الطويلة جداً (نص بدون علامات ترقيم) تُقسم عند الفواصل إلى أجزاء مفهومة بدل حذفها.
+    static func clauses(of sentence: String) -> [String] {
+        let words = sentence.split(separator: " ")
+        guard words.count > 60 else { return [sentence] }
+        var parts: [String] = []
+        var current: [Substring] = []
+        for word in words {
+            current.append(word)
+            let breaksHere = word.hasSuffix("،") || word.hasSuffix(",") || word.hasSuffix("؛") || word.hasSuffix(";")
+            if (breaksHere && current.count >= 12) || current.count >= 40 {
+                parts.append(current.joined(separator: " "))
+                current = []
+            }
+        }
+        if !current.isEmpty {
+            if current.count < 6, let last = parts.popLast() {
+                parts.append(last + " " + current.joined(separator: " "))
+            } else {
+                parts.append(current.joined(separator: " "))
+            }
+        }
+        return parts
+    }
+
+    private static func isListItem(_ line: String) -> Bool {
+        line.range(of: "^([•●▪◦\\-–—*]+|\\(?[0-9٠-٩]{1,2}[\\.\\)\\-:]|[a-zA-Zأ-ي][\\)\\.])\\s+",
+                   options: .regularExpression) != nil
     }
 
     // MARK: - التحليل
@@ -72,11 +184,13 @@ enum OnDeviceStudyGenerator {
                 let tokenizer = NLTokenizer(unit: .sentence)
                 tokenizer.string = line
                 tokenizer.enumerateTokens(in: line.startIndex..<line.endIndex) { range, _ in
-                    let sentence = String(line[range]).trimmingCharacters(in: .whitespacesAndNewlines)
-                    let tokens = OnDeviceStudyGenerator.tokens(in: sentence)
-                    if tokens.count >= 3 && tokens.count <= 55 {
-                        sentences.append(Sentence(index: index, text: sentence, tokens: tokens))
-                        index += 1
+                    let whole = String(line[range]).trimmingCharacters(in: .whitespacesAndNewlines)
+                    for sentence in OnDeviceStudyGenerator.clauses(of: whole) {
+                        let tokens = OnDeviceStudyGenerator.tokens(in: sentence)
+                        if tokens.count >= 3 {
+                            sentences.append(Sentence(index: index, text: sentence, tokens: tokens))
+                            index += 1
+                        }
                     }
                     return true
                 }
@@ -130,9 +244,47 @@ enum OnDeviceStudyGenerator {
 
         // MARK: الملخص
 
-        func summary() -> [String] {
-            let top = bySCore.prefix(5).sorted { $0.index < $1.index }
-            return top.map { shorten($0.text, words: 32) }
+        /// أهم النقاط بجمل كاملة، بترتيبها في المذكرة، مع تجنّب تكرار نفس الفكرة.
+        func keyPoints() -> [String] {
+            let target = min(10, max(4, sentences.count / 4))
+            let definitionsCount = sentences.filter { $0.definition != nil }.count
+            // التعريفات تظهر في قسم «المصطلحات»، فنفضّل غيرها هنا إن وُجد ما يكفي
+            let preferOthers = definitionsCount >= 2 && sentences.count - definitionsCount >= 3
+            var chosen: [Sentence] = []
+            var covered = Set<String>()
+            for sentence in bySCore {
+                if preferOthers && sentence.definition != nil { continue }
+                let keys = Set(sentence.tokens.filter(OnDeviceStudyGenerator.isTerm).map(\.key))
+                if !chosen.isEmpty, !keys.isEmpty,
+                   Double(keys.intersection(covered).count) / Double(keys.count) > 0.7 { continue }
+                chosen.append(sentence)
+                covered.formUnion(keys)
+                if chosen.count >= target { break }
+            }
+            return chosen.sorted { $0.index < $1.index }.map(\.text)
+        }
+
+        /// المصطلحات وتعريفاتها كما وردت في المذكرة.
+        func keyTerms() -> [StudyTerm] {
+            var seen = Set<String>()
+            var result: [StudyTerm] = []
+            for sentence in sentences {
+                guard let definition = sentence.definition else { continue }
+                let key = OnDeviceStudyGenerator.normalizedKey(definition.term)
+                guard seen.insert(key).inserted else { continue }
+                result.append(StudyTerm(term: definition.term, definition: capitalized(definition.body)))
+                if result.count >= 14 { break }
+            }
+            return result
+        }
+
+        /// جمل فيها أرقام أو تواريخ (غير المذكورة في أهم النقاط).
+        func facts(excluding points: Set<String>) -> [String] {
+            let numbered = sentences.filter {
+                !points.contains($0.text) && $0.definition == nil && OnDeviceStudyGenerator.number(in: $0.text) != nil
+            }
+            let top = numbered.sorted { $0.score > $1.score }.prefix(6)
+            return top.sorted { $0.index < $1.index }.map(\.text)
         }
 
         // MARK: البطاقات
@@ -171,11 +323,11 @@ enum OnDeviceStudyGenerator {
             if definitions.count >= 4 {
                 for (sentence, definition) in definitions.prefix(4) {
                     let others = definitions.filter { $0.0.index != sentence.index }
-                        .map { shorten($0.1.body, words: 14) }
+                        .map { capitalized($0.1.body) }
                     let distractors = Array(others.shuffled(using: &rng).prefix(3))
                     guard distractors.count == 3 else { continue }
                     definitionQuestions.append(makeQuestion(prompt: definitionPrompt(definition),
-                                                            answer: shorten(definition.body, words: 14),
+                                                            answer: capitalized(definition.body),
                                                             distractors: distractors,
                                                             explanation: sentence.text))
                 }
@@ -323,12 +475,6 @@ enum OnDeviceStudyGenerator {
         }
 
         // MARK: مساعدات النص
-
-        private func shorten(_ text: String, words limit: Int) -> String {
-            let words = text.split(separator: " ")
-            guard words.count > limit else { return text }
-            return words.prefix(limit).joined(separator: " ") + "…"
-        }
 
         private func capitalized(_ text: String) -> String {
             guard !arabic, let first = text.first else { return text }

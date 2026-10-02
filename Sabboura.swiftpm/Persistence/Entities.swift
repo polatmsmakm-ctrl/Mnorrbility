@@ -211,7 +211,7 @@ extension CDNote {
     /// المراجعة موجودة لكن المذكرة تغيّرت بعدها.
     var isStudyStale: Bool {
         guard let set = studySet else { return true }
-        return set.signature != contentSignature
+        return set.signature != contentSignature || (set.version ?? 1) < StudySet.currentVersion
     }
 
     /// كل المذكرات غير المحذوفة، الأحدث تعديلاً أولاً.
