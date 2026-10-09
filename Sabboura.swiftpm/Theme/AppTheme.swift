@@ -273,5 +273,7 @@ struct ThemedContainer<Content: View>: View {
             .environment(\.appTheme, theme)
             .environment(\.contentDark, theme.isDark && settings.contentMatchesTheme)
             .tint(theme.accent)
+            // خط Inter الافتراضي لكل النصوص (العربي يبقى بخط النظام)
+            .font(.inter(.body))
     }
 }

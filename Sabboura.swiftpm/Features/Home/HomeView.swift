@@ -35,10 +35,10 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 28) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("الرئيسية")
-                        .font(.system(size: AppEnvironment.isPhone ? 30 : 40, weight: .heavy))
+                        .font(.inter(size: AppEnvironment.isPhone ? 30 : 40, weight: .heavy))
                         .foregroundStyle(theme.primaryText)
                     Text(greeting)
-                        .font(.title3)
+                        .font(.inter(.title3))
                         .foregroundStyle(theme.secondaryText)
                 }
 
@@ -49,7 +49,7 @@ struct HomeView: View {
                           ? "جلسة مذاكرة جارية — \(study.running?.phase.title ?? "") \(study.remainingText)"
                           : "درست اليوم \(study.minutesToday) دقيقة",
                           systemImage: "timer")
-                        .font(.headline)
+                        .font(.inter(.headline))
                         .foregroundStyle(theme.primaryText)
                         .padding(16)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -75,11 +75,11 @@ struct HomeView: View {
                                         .foregroundStyle(Color(hex: folder.colorValue))
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(folder.displayName)
-                                            .font(.subheadline.weight(.semibold))
+                                            .font(.inter(.subheadline, weight: .semibold))
                                             .foregroundStyle(theme.primaryText)
                                             .lineLimit(1)
                                         Text("\(folder.notesCount) ملاحظة")
-                                            .font(.caption)
+                                            .font(.inter(.caption))
                                             .foregroundStyle(theme.secondaryText)
                                     }
                                     Spacer(minLength: 0)
@@ -137,7 +137,7 @@ struct HomeView: View {
                     .frame(width: 48, height: 48)
                     .background(color.opacity(0.15), in: RoundedRectangle(cornerRadius: 12))
                 Text(title)
-                    .font(.headline)
+                    .font(.inter(.headline))
                     .foregroundStyle(theme.primaryText)
             }
             .frame(width: 170, alignment: .leading)
@@ -152,7 +152,7 @@ struct HomeView: View {
     private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(title)
-                .font(.title3.weight(.bold))
+                .font(.inter(.title3, weight: .bold))
                 .foregroundStyle(theme.primaryText)
             content()
         }

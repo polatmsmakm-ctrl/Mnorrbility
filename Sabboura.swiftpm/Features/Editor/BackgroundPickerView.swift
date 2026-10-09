@@ -105,7 +105,7 @@ struct BackgroundPickerView: View {
     @ViewBuilder
     private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(title).font(.headline)
+            Text(title).font(.inter(.headline))
             content()
         }
     }
@@ -132,7 +132,7 @@ struct BackgroundPickerView: View {
                                     lineWidth: selected ? 3 : 1)
                     )
                 Text(kind.title)
-                    .font(.caption)
+                    .font(.inter(.caption))
                     .foregroundStyle(selected ? Color.accentColor : Color.primary)
             }
         }
@@ -164,7 +164,7 @@ struct BackgroundPickerView: View {
                                     lineWidth: selected ? 3 : 1)
                     )
                 Text(preset.name)
-                    .font(.caption2)
+                    .font(.inter(.caption2))
                     .lineLimit(1)
                     .frame(width: 70)
             }

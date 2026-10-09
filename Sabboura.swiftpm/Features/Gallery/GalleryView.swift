@@ -51,7 +51,7 @@ struct GalleryView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 Text("المعرض")
-                    .font(.system(size: AppEnvironment.isPhone ? 30 : 40, weight: .heavy))
+                    .font(.inter(size: AppEnvironment.isPhone ? 30 : 40, weight: .heavy))
                     .foregroundStyle(theme.primaryText)
                 Picker("التصنيف", selection: $filter) {
                     ForEach(GalleryFilter.allCases) { option in
@@ -67,10 +67,10 @@ struct GalleryView: View {
                             .font(.system(size: 44))
                             .foregroundStyle(theme.secondaryText)
                         Text("لا توجد ملفات بعد")
-                            .font(.title3.weight(.semibold))
+                            .font(.inter(.title3, weight: .semibold))
                             .foregroundStyle(theme.primaryText)
                         Text("ملفات PDF والصور والتسجيلات التي تضيفها للملاحظات تظهر هنا.")
-                            .font(.subheadline)
+                            .font(.inter(.subheadline))
                             .foregroundStyle(theme.secondaryText)
                     }
                     .frame(maxWidth: .infinity)
@@ -138,11 +138,11 @@ private struct GalleryTile: View {
             Rectangle().fill(theme.border).frame(height: 1)
             VStack(alignment: .leading, spacing: 3) {
                 Text(attachment.displayName)
-                    .font(.subheadline.weight(.semibold))
+                    .font(.inter(.subheadline, weight: .semibold))
                     .foregroundStyle(theme.primaryText)
                     .lineLimit(1)
                 Text(attachment.note?.displayTitle ?? "")
-                    .font(.caption)
+                    .font(.inter(.caption))
                     .foregroundStyle(theme.secondaryText)
                     .lineLimit(1)
             }

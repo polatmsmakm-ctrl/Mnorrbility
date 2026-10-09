@@ -82,7 +82,7 @@ struct NoteStudyView: View {
                     withAnimation(.easeInOut(duration: 0.2)) { tab = item }
                 } label: {
                     Label(item.title, systemImage: item.symbol)
-                        .font(.subheadline.weight(.semibold))
+                        .font(.inter(.subheadline, weight: .semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 9)
                         .foregroundStyle(tab == item ? Color.white : theme.primaryText)
@@ -149,7 +149,7 @@ struct NoteStudyView: View {
                 }
                 Spacer(minLength: 0)
             }
-            .font(.footnote)
+            .font(.inter(.footnote))
             .foregroundStyle(theme.secondaryText)
             .padding(.horizontal, 16)
             .padding(.vertical, 9)
@@ -162,10 +162,10 @@ struct NoteStudyView: View {
             ProgressView()
                 .controlSize(.large)
             Text(service.status(for: note) ?? "جارٍ قراءة المذكرة…")
-                .font(.headline)
+                .font(.inter(.headline))
                 .foregroundStyle(theme.primaryText)
             Text("أقرأ النص المكتوب وملفات PDF وخط اليد والصور، وأطلع منها بطاقات وأسئلة لأهم النقاط.")
-                .font(.subheadline)
+                .font(.inter(.subheadline))
                 .foregroundStyle(theme.secondaryText)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 420)
@@ -180,10 +180,10 @@ struct NoteStudyView: View {
                 .font(.system(size: 44))
                 .foregroundStyle(theme.secondaryText)
             Text("ما لقيت كلام كافي في المذكرة")
-                .font(.title3.weight(.semibold))
+                .font(.inter(.title3, weight: .semibold))
                 .foregroundStyle(theme.primaryText)
             Text(service.notice(for: note) ?? "اكتب ملاحظاتك أو استورد ملف PDF فيه نص، وبعدها أطلع لك بطاقات وكويز تلقائياً.")
-                .font(.subheadline)
+                .font(.inter(.subheadline))
                 .foregroundStyle(theme.secondaryText)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 420)
@@ -248,11 +248,11 @@ private struct FlashcardsView: View {
         let known = set.cards.filter { $0.known == true }.count
         return HStack {
             Text("\(position + 1) / \(cards.count)")
-                .font(.subheadline.weight(.semibold).monospacedDigit())
+                .font(.inter(.subheadline, weight: .semibold, monospacedDigits: true))
                 .accessibilityIdentifier("cardProgress")
             Spacer()
             Label("عرفت \(known)", systemImage: "checkmark.circle.fill")
-                .font(.subheadline)
+                .font(.inter(.subheadline))
                 .foregroundStyle(.green)
             Button {
                 order.shuffle()
@@ -270,12 +270,12 @@ private struct FlashcardsView: View {
         let text = flipped ? card.back : card.front
         return VStack(spacing: 14) {
             Text(flipped ? "الإجابة" : "السؤال")
-                .font(.caption.weight(.bold))
+                .font(.inter(.caption, weight: .bold))
                 .foregroundStyle(flipped ? Color.green : theme.accent)
             GeometryReader { geometry in
                 ScrollView {
                     Text(text)
-                        .font(.system(size: cardFontSize(text), weight: flipped ? .regular : .semibold))
+                        .font(.inter(size: cardFontSize(text), weight: flipped ? .regular : .semibold))
                         .foregroundStyle(theme.primaryText)
                         .multilineTextAlignment(.center)
                         .lineLimit(nil)
@@ -287,7 +287,7 @@ private struct FlashcardsView: View {
                 .scrollBounceBehavior(.basedOnSize)
             }
             Text(flipped ? "اضغط لعرض السؤال" : "اضغط لقلب البطاقة")
-                .font(.caption)
+                .font(.inter(.caption))
                 .foregroundStyle(theme.secondaryText)
         }
         .padding(26)
@@ -350,7 +350,7 @@ private struct FlashcardsView: View {
             .buttonStyle(.plain)
             .accessibilityIdentifier("cardKnown")
         }
-        .font(.headline)
+        .font(.inter(.headline))
         .frame(maxWidth: 640)
     }
 
@@ -376,7 +376,7 @@ private struct FlashcardsView: View {
                 .font(.system(size: 56))
                 .foregroundStyle(unknown == 0 ? .yellow : theme.accent)
             Text("عرفت \(known) من \(set.cards.count)")
-                .font(.title2.weight(.bold))
+                .font(.inter(.title2, weight: .bold))
                 .foregroundStyle(theme.primaryText)
                 .accessibilityIdentifier("cardsFinished")
             if unknown > 0 {
@@ -437,15 +437,15 @@ private struct QuizView: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 Text("سؤال \(position + 1) من \(set.questions.count)")
-                    .font(.subheadline.weight(.semibold).monospacedDigit())
+                    .font(.inter(.subheadline, weight: .semibold, monospacedDigits: true))
                     .foregroundStyle(theme.secondaryText)
                 Spacer()
                 Text("النتيجة: \(score)")
-                    .font(.subheadline.monospacedDigit())
+                    .font(.inter(.subheadline, monospacedDigits: true))
                     .foregroundStyle(theme.secondaryText)
             }
             Text(question.prompt)
-                .font(.title3.weight(.semibold))
+                .font(.inter(.title3, weight: .semibold))
                 .foregroundStyle(theme.primaryText)
                 .multilineTextAlignment(.leading)
                 .lineLimit(nil)
@@ -462,7 +462,7 @@ private struct QuizView: View {
                 } label: {
                     HStack(spacing: 12) {
                         Image(systemName: icon(for: index, question: question))
-                            .font(.title3)
+                            .font(.inter(.title3))
                         Text(option)
                             .multilineTextAlignment(.leading)
                             .lineLimit(nil)
@@ -484,11 +484,11 @@ private struct QuizView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Label(selected == question.answerIndex ? "إجابة صحيحة!" : "الإجابة الصحيحة: \(question.options[question.answerIndex])",
                           systemImage: selected == question.answerIndex ? "checkmark.seal.fill" : "lightbulb.fill")
-                        .font(.headline)
+                        .font(.inter(.headline))
                         .foregroundStyle(selected == question.answerIndex ? .green : .orange)
                     if let explanation = question.explanation, !explanation.isEmpty {
                         Text(explanation)
-                            .font(.subheadline)
+                            .font(.inter(.subheadline))
                             .foregroundStyle(theme.secondaryText)
                             .multilineTextAlignment(.leading)
                             .lineLimit(nil)
@@ -503,7 +503,7 @@ private struct QuizView: View {
                     next()
                 } label: {
                     Text(position + 1 < set.questions.count ? "السؤال التالي" : "النتيجة")
-                        .font(.headline)
+                        .font(.inter(.headline))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 13)
                         .foregroundStyle(.white)
@@ -562,7 +562,7 @@ private struct QuizView: View {
                 .font(.system(size: 54))
                 .foregroundStyle(score == total ? .yellow : theme.accent)
             Text("\(score) من \(total)")
-                .font(.system(size: 40, weight: .heavy).monospacedDigit())
+                .font(.inter(size: 40, weight: .heavy, monospacedDigits: true))
                 .foregroundStyle(theme.primaryText)
                 .accessibilityIdentifier("quizScore")
             if let best = set.bestScore {
@@ -597,7 +597,7 @@ private struct SummaryView: View {
                         ForEach(Array(set.summary.enumerated()), id: \.offset) { index, point in
                             HStack(alignment: .firstTextBaseline, spacing: 10) {
                                 Text("\(index + 1)")
-                                    .font(.caption.weight(.bold).monospacedDigit())
+                                    .font(.inter(.caption, weight: .bold, monospacedDigits: true))
                                     .foregroundStyle(.white)
                                     .frame(width: 22, height: 22)
                                     .background(theme.accent, in: Circle())
@@ -654,10 +654,10 @@ private struct SummaryView: View {
                     }
                     .accessibilityIdentifier("copySummary")
                 }
-                .font(.footnote)
+                .font(.inter(.footnote))
                 .foregroundStyle(theme.secondaryText)
                 Text("\(set.cards.count) بطاقة · \(set.questions.count) سؤال")
-                    .font(.footnote)
+                    .font(.inter(.footnote))
                     .foregroundStyle(theme.secondaryText)
             }
             .padding(20)
@@ -671,7 +671,7 @@ private struct SummaryView: View {
                                         @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Label(title, systemImage: symbol)
-                .font(.headline)
+                .font(.inter(.headline))
                 .foregroundStyle(theme.primaryText)
             VStack(alignment: .leading, spacing: 12) {
                 content()
@@ -690,7 +690,7 @@ private struct SummaryView: View {
     /// نص كامل بدون قص، باتجاه لغته (العربي من اليمين والإنجليزي من اليسار).
     private func fullText(_ text: String, weight: Font.Weight = .regular, color: Color? = nil) -> some View {
         Text(text)
-            .font(.body.weight(weight))
+            .font(.inter(.body, weight: weight))
             .foregroundStyle(color ?? theme.primaryText)
             .lineLimit(nil)
             .fixedSize(horizontal: false, vertical: true)

@@ -57,22 +57,22 @@ struct ReviewSettingsView: View {
         } label: {
             HStack(spacing: 12) {
                 Image(systemName: symbol)
-                    .font(.title3)
+                    .font(.inter(.title3))
                     .foregroundStyle(theme.accent)
                     .frame(width: 30)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .font(.body.weight(.semibold))
+                        .font(.inter(.body, weight: .semibold))
                         .foregroundStyle(theme.primaryText)
                     Text(subtitle)
-                        .font(.caption)
+                        .font(.inter(.caption))
                         .foregroundStyle(theme.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 8)
                 if provider == value {
                     Image(systemName: "checkmark.circle.fill")
-                        .font(.title3)
+                        .font(.inter(.title3))
                         .foregroundStyle(theme.accent)
                 }
             }
@@ -199,7 +199,7 @@ struct ReviewSettingsView: View {
             }
         } else if let checkResult {
             Text(checkResult)
-                .font(.footnote)
+                .font(.inter(.footnote))
                 .foregroundStyle(theme.secondaryText)
                 .accessibilityIdentifier("keyCheckResult")
         }

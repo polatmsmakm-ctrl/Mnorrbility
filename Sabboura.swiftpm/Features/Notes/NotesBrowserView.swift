@@ -197,7 +197,7 @@ struct NotesBrowserView: View {
                     Circle().fill(Color(hex: folder.colorValue)).frame(width: 18, height: 18)
                 }
                 Text(title)
-                    .font(.system(size: AppEnvironment.isPhone ? 30 : 40, weight: .heavy))
+                    .font(.inter(size: AppEnvironment.isPhone ? 30 : 40, weight: .heavy))
                     .foregroundStyle(theme.primaryText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
@@ -212,7 +212,7 @@ struct NotesBrowserView: View {
                             } label: {
                                 VStack(spacing: 6) {
                                     Text(tab.title)
-                                        .font(.system(size: 17, weight: .semibold))
+                                        .font(.inter(size: 17, weight: .semibold))
                                         .foregroundStyle(appState.notesTab == tab ? theme.primaryText : theme.secondaryText)
                                     Capsule()
                                         .fill(appState.notesTab == tab ? theme.accent : Color.clear)
@@ -236,10 +236,10 @@ struct NotesBrowserView: View {
                 .font(.system(size: 44))
                 .foregroundStyle(theme.secondaryText)
             Text(appState.notesTab == .favorites && folder == nil ? "لا توجد ملاحظات مفضلة" : "لا توجد ملاحظات بعد")
-                .font(.title3.weight(.semibold))
+                .font(.inter(.title3, weight: .semibold))
                 .foregroundStyle(theme.primaryText)
             Text("اضغط «جديد» لإنشاء مذكرة أو استيراد ملف PDF والكتابة عليه.")
-                .font(.subheadline)
+                .font(.inter(.subheadline))
                 .foregroundStyle(theme.secondaryText)
                 .multilineTextAlignment(.center)
             HStack(spacing: 12) {
@@ -247,7 +247,7 @@ struct NotesBrowserView: View {
                     createNote()
                 } label: {
                     Label("إنشاء مذكرة", systemImage: "plus")
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(.inter(size: 17, weight: .semibold))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 18)
                         .padding(.vertical, 10)
@@ -259,7 +259,7 @@ struct NotesBrowserView: View {
                     showPDFImporter = true
                 } label: {
                     Label("فتح ملف PDF", systemImage: "doc.richtext")
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(.inter(size: 17, weight: .semibold))
                         .foregroundStyle(theme.accent)
                         .padding(.horizontal, 18)
                         .padding(.vertical, 10)
@@ -360,7 +360,7 @@ struct NotesBrowserView: View {
             }
         } label: {
             Label("جديد", systemImage: "plus")
-                .font(.system(size: 17, weight: .semibold))
+                .font(.inter(size: 17, weight: .semibold))
                 .labelStyle(.titleAndIcon)
                 .foregroundStyle(.white)
                 .padding(.horizontal, 16)
@@ -447,7 +447,7 @@ struct NotesBrowserView: View {
         let chosen = notes.filter { selected.contains($0.objectID) && $0.isAlive }
         return HStack(spacing: 18) {
             Text("\(chosen.count) محددة")
-                .font(.subheadline.weight(.semibold))
+                .font(.inter(.subheadline, weight: .semibold))
                 .foregroundStyle(theme.primaryText)
             Spacer()
             Menu {
@@ -563,7 +563,7 @@ struct NoteCardView: View {
                     .overlay(alignment: .topLeading) {
                         if note.isFavorite {
                             Image(systemName: "star.fill")
-                                .font(.caption)
+                                .font(.inter(.caption))
                                 .foregroundStyle(.yellow)
                                 .padding(8)
                         }
@@ -571,11 +571,11 @@ struct NoteCardView: View {
                 Rectangle().fill(theme.border).frame(height: 1)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(note.displayTitle)
-                        .font(.system(size: 17, weight: .bold))
+                        .font(.inter(size: 17, weight: .bold))
                         .foregroundStyle(theme.primaryText)
                         .lineLimit(1)
                     Text(note.updatedAt ?? Date(), format: .dateTime.day().month(.abbreviated).year())
-                        .font(.system(size: 14))
+                        .font(.inter(size: 14))
                         .foregroundStyle(theme.secondaryText)
                         .environment(\.locale, Locale(identifier: "ar"))
                 }
@@ -624,9 +624,9 @@ struct NoteRowView: View {
                     .overlay(RoundedRectangle(cornerRadius: 8).stroke(theme.border, lineWidth: 1))
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 6) {
-                        Text(note.displayTitle).font(.headline).foregroundStyle(theme.primaryText).lineLimit(1)
+                        Text(note.displayTitle).font(.inter(.headline)).foregroundStyle(theme.primaryText).lineLimit(1)
                         if note.isFavorite {
-                            Image(systemName: "star.fill").font(.caption).foregroundStyle(.yellow)
+                            Image(systemName: "star.fill").font(.inter(.caption)).foregroundStyle(.yellow)
                         }
                     }
                     HStack(spacing: 6) {
@@ -638,7 +638,7 @@ struct NoteRowView: View {
                         Text("•")
                         Text("\(note.pageCount) ص")
                     }
-                    .font(.caption)
+                    .font(.inter(.caption))
                     .foregroundStyle(theme.secondaryText)
                     .environment(\.locale, Locale(identifier: "ar"))
                 }

@@ -202,7 +202,7 @@ struct EditorView: View {
                 HStack(spacing: 8) {
                     backButton
                     Text(note.displayTitle)
-                        .font(.subheadline.weight(.semibold))
+                        .font(.inter(.subheadline, weight: .semibold))
                         .foregroundStyle(theme.primaryText)
                         .lineLimit(1)
                         .frame(maxWidth: .infinity)
@@ -405,7 +405,7 @@ struct EditorView: View {
                 TimelineView(.periodic(from: start, by: 1)) { context in
                     let seconds = Int(context.date.timeIntervalSince(start))
                     Label("جارٍ التسجيل \(seconds / 60):\(String(format: "%02d", seconds % 60))", systemImage: "record.circle")
-                        .font(.callout.weight(.semibold))
+                        .font(.inter(.callout, weight: .semibold))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 8)
@@ -415,7 +415,7 @@ struct EditorView: View {
             }
             if let message = controller.toast {
                 Text(message)
-                    .font(.callout.weight(.medium))
+                    .font(.inter(.callout, weight: .medium))
                     .multilineTextAlignment(.center)
                     .foregroundStyle(theme.primaryText)
                     .padding(.horizontal, 16)

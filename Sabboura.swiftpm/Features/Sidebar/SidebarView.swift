@@ -76,7 +76,7 @@ struct SidebarView: View {
         .scrollIndicators(.hidden)
         .safeAreaInset(edge: .bottom) {
             Text("من إعداد وتطوير راشد الشمري")
-                .font(.caption)
+                .font(.inter(.caption))
                 .foregroundStyle(theme.secondaryText)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 10)
@@ -178,7 +178,7 @@ struct SidebarView: View {
         }
         return VStack(alignment: .leading, spacing: 4) {
             Text(matches.isEmpty ? "لا توجد نتائج" : "النتائج (\(matches.count))")
-                .font(.caption.weight(.semibold))
+                .font(.inter(.caption, weight: .semibold))
                 .foregroundStyle(theme.secondaryText)
                 .padding(.horizontal, 12)
             ForEach(matches, id: \.objectID) { note in
@@ -191,7 +191,7 @@ struct SidebarView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(note.displayTitle).foregroundStyle(theme.primaryText).lineLimit(1)
                             if let folder = note.subject, folder.isAlive {
-                                Text(folder.displayName).font(.caption).foregroundStyle(theme.secondaryText)
+                                Text(folder.displayName).font(.inter(.caption)).foregroundStyle(theme.secondaryText)
                             }
                         }
                         Spacer()
@@ -220,11 +220,11 @@ struct SidebarView: View {
                     .font(.system(size: 20))
                     .frame(width: 28)
                 Text(title)
-                    .font(.system(size: 17, weight: isSelected(item) ? .semibold : .regular))
+                    .font(.inter(size: 17, weight: isSelected(item) ? .semibold : .regular))
                 Spacer()
                 if let count {
                     Text("\(count)")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.inter(size: 16, weight: .semibold))
                         .monospacedDigit()
                 }
             }
@@ -241,7 +241,7 @@ struct SidebarView: View {
     private var foldersHeader: some View {
         HStack {
             Text("المجلدات")
-                .font(.system(size: 15, weight: .semibold))
+                .font(.inter(size: 15, weight: .semibold))
                 .foregroundStyle(theme.secondaryText)
             Spacer()
             Menu {
@@ -285,7 +285,7 @@ struct SidebarView: View {
                         Image(systemName: isCollapsed ? "chevron.left" : "chevron.down")
                             .font(.system(size: 11, weight: .bold))
                         Text(category.displayName)
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(.inter(size: 13, weight: .semibold))
                     }
                     .foregroundStyle(theme.secondaryText)
                     .contentShape(Rectangle())
@@ -347,13 +347,13 @@ struct SidebarView: View {
                         .frame(width: 26)
                 }
                 Text(folder.displayName)
-                    .font(.system(size: 17, weight: selected ? .semibold : .regular))
+                    .font(.inter(size: 17, weight: selected ? .semibold : .regular))
                     .foregroundStyle(theme.primaryText)
                     .lineLimit(1)
                 Spacer()
                 if folder.notesCount > 0 {
                     Text("\(folder.notesCount)")
-                        .font(.system(size: 14))
+                        .font(.inter(size: 14))
                         .monospacedDigit()
                         .foregroundStyle(theme.secondaryText)
                 }
@@ -423,9 +423,9 @@ struct SidebarView: View {
         VStack(alignment: .leading, spacing: 8) {
             Label("حدث عطل في تشغيل سابق", systemImage: "exclamationmark.triangle.fill")
                 .foregroundStyle(.orange)
-                .font(.subheadline.weight(.semibold))
+                .font(.inter(.subheadline, weight: .semibold))
             Text("أرسل التقرير للمطوّر ليتم إصلاحه.")
-                .font(.caption)
+                .font(.inter(.caption))
                 .foregroundStyle(theme.secondaryText)
             HStack {
                 Button("مشاركة التقرير") { SharePresenter.share(crashReports) }
@@ -433,7 +433,7 @@ struct SidebarView: View {
                 Button("إخفاء") { CrashReporter.markAllSeen() }
                     .buttonStyle(.bordered)
             }
-            .font(.caption)
+            .font(.inter(.caption))
         }
         .padding(12)
         .background(theme.card, in: RoundedRectangle(cornerRadius: 12))

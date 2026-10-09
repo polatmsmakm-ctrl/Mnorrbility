@@ -319,7 +319,7 @@ struct SizePickerView: View {
         let kind = controller.activeInkKind
         let range = kind.widthRange
         VStack(alignment: .leading, spacing: 16) {
-            Text("السماكة — \(kind.title)").font(.headline)
+            Text("السماكة — \(kind.title)").font(.inter(.headline))
             HStack(spacing: 18) {
                 ForEach([0.08, 0.25, 0.55], id: \.self) { fraction in
                     let value = range.lowerBound + (range.upperBound - range.lowerBound) * fraction
@@ -362,7 +362,7 @@ struct MoreToolsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text("أقلام إضافية").font(.headline)
+                Text("أقلام إضافية").font(.inter(.headline))
                 LazyVGrid(columns: columns, spacing: 10) {
                     ForEach(ToolKind.extraInkKinds) { kind in
                         extraToolButton(kind)
@@ -380,7 +380,7 @@ struct MoreToolsView: View {
                     }
                     .accessibilityIdentifier("smartShapesToggle")
                     Text("ارسم خطاً أو دائرة أو مربعاً أو مثلثاً وثبّت القلم نصف ثانية قبل ما ترفعه، فيتحول لشكل مضبوط.")
-                        .font(.caption)
+                        .font(.inter(.caption))
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -392,7 +392,7 @@ struct MoreToolsView: View {
                 }
 
                 Divider()
-                Text("التكبير: \(controller.zoomPercent)%").font(.subheadline).foregroundStyle(.secondary)
+                Text("التكبير: \(controller.zoomPercent)%").font(.inter(.subheadline)).foregroundStyle(.secondary)
                 HStack {
                     Button {
                         controller.zoomOut()
@@ -429,7 +429,7 @@ struct MoreToolsView: View {
         } label: {
             VStack(spacing: 6) {
                 Image(systemName: kind.icon).font(.system(size: 20))
-                Text(kind.title).font(.caption2).lineLimit(1).minimumScaleFactor(0.7)
+                Text(kind.title).font(.inter(.caption2)).lineLimit(1).minimumScaleFactor(0.7)
             }
             .frame(maxWidth: .infinity, minHeight: 58)
             .background(RoundedRectangle(cornerRadius: 12)
@@ -451,7 +451,7 @@ struct ToolOptionsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                Text(kind.title).font(.headline)
+                Text(kind.title).font(.inter(.headline))
 
                 if kind.isInk {
                     inkOptions
@@ -461,7 +461,7 @@ struct ToolOptionsView: View {
                     tidyOptions
                 } else {
                     Text("ارسم دائرة حول الكتابة لتحديدها، ثم اسحبها لنقلها، أو المس التحديد لإظهار خيارات النسخ والقص والتكرار والحذف.")
-                        .font(.callout)
+                        .font(.inter(.callout))
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -518,7 +518,7 @@ struct ToolOptionsView: View {
     @ViewBuilder
     private var tidyOptions: some View {
         Text("ارسم دائرة حول أي كتابة، فتصير أرتب وهي تبقى بخطك: السطر يستقيم وينزل على خط الصفحة، والمسافات بين الكلمات تتساوى، والرجفة الصغيرة تنعّم.")
-            .font(.callout)
+            .font(.inter(.callout))
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
 
@@ -548,7 +548,7 @@ struct ToolOptionsView: View {
         .accessibilityIdentifier("eraserMode")
 
         Text(controller.tools.eraserMode.explanation)
-            .font(.callout)
+            .font(.inter(.callout))
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
 
@@ -584,7 +584,7 @@ struct ViewSettingsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("إعدادات العرض")
-                .font(.headline)
+                .font(.inter(.headline))
                 .padding(.horizontal, 20)
                 .padding(.vertical, 14)
             Divider()
@@ -621,7 +621,7 @@ struct ViewSettingsView: View {
                     .frame(width: 26)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                    Text(subtitle).font(.caption).foregroundStyle(.secondary)
+                    Text(subtitle).font(.inter(.caption)).foregroundStyle(.secondary)
                 }
                 Spacer()
                 if controller.seamless == seamless {

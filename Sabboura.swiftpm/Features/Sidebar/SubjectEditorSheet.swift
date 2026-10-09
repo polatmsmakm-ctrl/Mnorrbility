@@ -57,7 +57,7 @@ struct SubjectEditorSheet: View {
                             .frame(width: 48, height: 48)
                             .background(Color(hex: colorHex), in: RoundedRectangle(cornerRadius: 12))
                         TextField("اسم المجلد", text: $name)
-                            .font(.title3)
+                            .font(.inter(.title3))
                             .accessibilityIdentifier("subjectName")
                     }
                     .padding(.vertical, 4)

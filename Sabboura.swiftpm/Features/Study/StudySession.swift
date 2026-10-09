@@ -236,7 +236,7 @@ struct StudySetupView: View {
                         dismiss()
                     } label: {
                         Text(study.isActive ? "إعادة بدء الجلسة" : "ابدأ الجلسة")
-                            .font(.headline)
+                            .font(.inter(.headline))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
                             .background(theme.accent, in: RoundedRectangle(cornerRadius: 14))
@@ -282,7 +282,7 @@ struct StudySetupView: View {
     private func optionRow(title: String, values: [Int], selected: Int, target: CustomTarget,
                            set: @escaping (Int) -> Void) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(title).font(.headline).foregroundStyle(theme.primaryText)
+            Text(title).font(.inter(.headline)).foregroundStyle(theme.primaryText)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 10) {
                     chip(label: "+", isSelected: !values.contains(selected)) {
@@ -346,7 +346,7 @@ struct StudyTimerPill: View {
                         .font(.system(size: 15, weight: .semibold, design: .rounded))
                         .monospacedDigit()
                     Text("الجلسة \(running.session) من \(study.totalSessions)")
-                        .font(.caption2)
+                        .font(.inter(.caption2))
                         .foregroundStyle(theme.secondaryText)
                 }
                 Button {

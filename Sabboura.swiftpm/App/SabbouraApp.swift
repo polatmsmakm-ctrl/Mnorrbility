@@ -12,6 +12,7 @@ struct SabbouraApp: App {
     init() {
         AppEnvironment.prepare()
         CrashReporter.install()
+        AppFont.registerBundledFonts()
         persistence = PersistenceController.shared
         _themeSettings = StateObject(wrappedValue: ThemeSettings.shared)
         _study = StateObject(wrappedValue: StudySessionManager.shared)

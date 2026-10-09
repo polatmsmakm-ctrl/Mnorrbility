@@ -172,21 +172,21 @@ struct ColorPaletteView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                Text(title).font(.headline)
+                Text(title).font(.inter(.headline))
 
                 LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
                     ForEach(presets, id: \.self) { swatch($0) }
                 }
 
                 if !recent.isEmpty {
-                    Text("المستخدمة مؤخراً").font(.subheadline).foregroundStyle(.secondary)
+                    Text("المستخدمة مؤخراً").font(.inter(.subheadline)).foregroundStyle(.secondary)
                     LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
                         ForEach(recent, id: \.self) { swatch($0) }
                     }
                 }
 
                 Divider()
-                Text("لون مخصّص").font(.subheadline).foregroundStyle(.secondary)
+                Text("لون مخصّص").font(.inter(.subheadline)).foregroundStyle(.secondary)
                 ColorWheelPicker(hex: $hex)
                     .frame(maxWidth: .infinity)
             }

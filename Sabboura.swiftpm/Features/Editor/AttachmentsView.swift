@@ -144,7 +144,7 @@ private struct AttachmentRow: View {
                         Text("• مصدر صفحات")
                     }
                 }
-                .font(.caption)
+                .font(.inter(.caption))
                 .foregroundStyle(.secondary)
             }
             Spacer()

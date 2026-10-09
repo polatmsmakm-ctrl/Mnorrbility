@@ -104,14 +104,14 @@ struct AppearanceSettingsView: View {
                         toggleRow("إبقاء الشاشة مضاءة", isOn: $settings.keepAwake, id: "keepAwake")
                     }
                     Text("يتجاهل التطبيق مؤقت قفل الشاشة عند التفعيل.")
-                        .font(.caption)
+                        .font(.inter(.caption))
                         .foregroundStyle(theme.secondaryText)
                         .padding(.horizontal, 6)
                 }
 
-                Text("الثيمات الداكنة").font(.headline).foregroundStyle(theme.primaryText)
+                Text("الثيمات الداكنة").font(.inter(.headline)).foregroundStyle(theme.primaryText)
                 themeRow(AppTheme.darkThemes)
-                Text("الثيمات الفاتحة").font(.headline).foregroundStyle(theme.primaryText)
+                Text("الثيمات الفاتحة").font(.inter(.headline)).foregroundStyle(theme.primaryText)
                 themeRow(AppTheme.lightThemes)
             }
             .padding(22)
@@ -146,7 +146,7 @@ struct AppearanceSettingsView: View {
                         VStack(spacing: 10) {
                             ThemePreview(theme: item, selected: isChosen(item))
                             Text(item.title)
-                                .font(.subheadline)
+                                .font(.inter(.subheadline))
                                 .foregroundStyle(theme.primaryText)
                         }
                     }
@@ -284,7 +284,7 @@ struct TrashView: View {
                                 Text(note.displayTitle).foregroundStyle(theme.primaryText)
                                 if let deleted = note.deletedAt {
                                     Text("تُحذف نهائياً بعد \(max(0, 30 - (Calendar.current.dateComponents([.day], from: deleted, to: Date()).day ?? 0))) يوماً")
-                                        .font(.caption)
+                                        .font(.inter(.caption))
                                         .foregroundStyle(theme.secondaryText)
                                 }
                             }
@@ -343,12 +343,12 @@ struct AboutView: View {
                     .foregroundStyle(theme.accent)
                     .padding(.top, 30)
                 Text("Mnorrbility")
-                    .font(.largeTitle.weight(.heavy))
+                    .font(.inter(.largeTitle, weight: .heavy))
                     .foregroundStyle(theme.primaryText)
                 Text(version)
                     .foregroundStyle(theme.secondaryText)
                 Text("من إعداد وتطوير راشد الشمري")
-                    .font(.headline)
+                    .font(.inter(.headline))
                     .foregroundStyle(theme.primaryText)
                 VStack(alignment: .leading, spacing: 10) {
                     feature("pencil.tip", "كتابة بقلم أبل وبالإصبع وبأي قلم عبر PencilKit")
