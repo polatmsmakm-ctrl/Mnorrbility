@@ -12,6 +12,7 @@ struct SabbouraApp: App {
     init() {
         AppEnvironment.prepare()
         CrashReporter.install()
+        NotificationPresenter.shared.install()
         persistence = PersistenceController.shared
         _themeSettings = StateObject(wrappedValue: ThemeSettings.shared)
         _study = StateObject(wrappedValue: StudySessionManager.shared)
@@ -151,6 +152,10 @@ struct RootView: View {
             .overlay(alignment: .bottom) {
                 StudyTimerPill()
                     .padding(.bottom, 18)
+                    .environment(\.layoutDirection, .rightToLeft)
+            }
+            .overlay(alignment: .top) {
+                StudyEndBanner()
                     .environment(\.layoutDirection, .rightToLeft)
             }
             .overlay(alignment: .bottomLeading) {
