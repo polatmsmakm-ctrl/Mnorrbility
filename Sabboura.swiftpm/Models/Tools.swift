@@ -16,6 +16,8 @@ enum ToolKind: String, CaseIterable, Codable, Identifiable {
     case text
     /// ترتيب الخط: ارسم دائرة حول الكتابة لتصبح أرتب
     case tidy
+    /// مؤشر الليزر: نقطة متوهجة بذيل يتلاشى للتأشير أثناء الشرح، ولا يُكتب شيء على الصفحة
+    case laser
 
     var id: String { rawValue }
 
@@ -38,6 +40,7 @@ enum ToolKind: String, CaseIterable, Codable, Identifiable {
         case .lasso: return "التحديد الحر"
         case .text: return "النص والصور"
         case .tidy: return "ترتيب الخط"
+        case .laser: return "مؤشر الليزر"
         }
     }
 
@@ -54,6 +57,7 @@ enum ToolKind: String, CaseIterable, Codable, Identifiable {
         case .lasso: return "lasso"
         case .text: return "textformat"
         case .tidy: return "wand.and.stars"
+        case .laser: return "scope"
         }
     }
 
@@ -66,7 +70,7 @@ enum ToolKind: String, CaseIterable, Codable, Identifiable {
         case .monoline: return .monoline
         case .crayon: return .crayon
         case .watercolor: return .watercolor
-        case .eraser, .lasso, .text, .tidy: return nil
+        case .eraser, .lasso, .text, .tidy, .laser: return nil
         }
     }
 
@@ -81,6 +85,7 @@ enum ToolKind: String, CaseIterable, Codable, Identifiable {
         case .watercolor: return 4...40
         case .eraser: return 4...80
         case .lasso, .text, .tidy: return 1...2
+        case .laser: return 6...30
         }
     }
 
@@ -95,11 +100,13 @@ enum ToolKind: String, CaseIterable, Codable, Identifiable {
         case .watercolor: return 16
         case .eraser: return 20
         case .lasso, .text, .tidy: return 1
+        case .laser: return 12
         }
     }
 
     var defaultColorHex: String {
         switch self {
+        case .laser: return "#FF2D2D"
         case .marker: return "#FFD60A"
         case .watercolor: return "#3B82F6"
         case .crayon: return "#DC2626"
@@ -196,7 +203,7 @@ struct ToolSettings: Codable, Equatable {
             case .pixel, .area:
                 return PKEraserTool(.bitmap, width: CGFloat(width(for: .eraser)))
             }
-        case .lasso, .text, .tidy:
+        case .lasso, .text, .tidy, .laser:
             return PKLassoTool()
         default:
             let inkType = kind.inkType ?? .pen

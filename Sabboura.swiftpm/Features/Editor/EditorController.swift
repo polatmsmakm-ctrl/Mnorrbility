@@ -421,6 +421,8 @@ final class EditorController: ObservableObject {
             showToast("انقر على الصفحة لإضافة نص — واسحب الصور والنصوص لتحريكها")
         } else if kind == .tidy {
             showToast("ارسم دائرة حول الكتابة لترتيبها — اضغط الأداة مرة ثانية للخيارات")
+        } else if kind == .laser {
+            showToast("حرّك إصبعك أو القلم فوق الصفحة للتأشير بالليزر — ما يُكتب شيء. اضغط الأداة مرة ثانية للون والحجم")
         }
     }
 
