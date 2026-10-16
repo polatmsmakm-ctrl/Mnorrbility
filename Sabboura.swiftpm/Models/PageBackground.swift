@@ -79,7 +79,13 @@ struct PageBackgroundConfig: Equatable {
     var effectiveColors: (paper: String, line: String, margin: String?) {
         let paperIsDark = UIColor(hex: backgroundHex).isDark
         if darkContent && !paperIsDark && !isPDF {
-            return (darkPaperHex, darkLineHex, darkMarginHex)
+            // الورق الأبيض يأخذ لون ورق الثيم؛ أما الملوّن (كريمي، أصفر، وردي) فيُقلب مع بقاء درجته
+            if backgroundHex.uppercased() == "#FFFFFF" {
+                return (darkPaperHex, darkLineHex, darkMarginHex)
+            }
+            return (UIColor(hex: backgroundHex).hueInverted.hexString,
+                    UIColor(hex: lineHex).hueInverted.hexString,
+                    UIColor(hex: "#E57373").hueInverted.hexString)
         }
         return (backgroundHex, lineHex, paperIsDark ? nil : "#E57373")
     }

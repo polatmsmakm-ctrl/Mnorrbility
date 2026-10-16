@@ -599,6 +599,13 @@ struct ViewSettingsView: View {
             .padding(.vertical, 12)
             .accessibilityIdentifier("contentMatchesToggle")
             Divider().padding(.leading, 56)
+            Toggle(isOn: $settings.nightPages) {
+                Label("الوضع الليلي للصفحات", systemImage: "moon.fill")
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            .accessibilityIdentifier("nightPagesToggle")
+            Divider().padding(.leading, 56)
             Toggle(isOn: $controller.showStatusBar) {
                 Label("شريط الحالة", systemImage: "wifi")
             }

@@ -172,6 +172,8 @@ final class ThemeSettings: ObservableObject {
     @Published var darkTheme: AppTheme { didSet { defaults.set(darkTheme.rawValue, forKey: Keys.darkTheme) } }
     @Published var lightTheme: AppTheme { didSet { defaults.set(lightTheme.rawValue, forKey: Keys.lightTheme) } }
     @Published var contentMatchesTheme: Bool { didSet { defaults.set(contentMatchesTheme, forKey: Keys.content) } }
+    /// الوضع الليلي للصفحات: يقلب الصفحات داكنة حتى لو كان ثيم التطبيق فاتحاً
+    @Published var nightPages: Bool { didSet { defaults.set(nightPages, forKey: Keys.nightPages) } }
     @Published var colorfulFolders: Bool { didSet { defaults.set(colorfulFolders, forKey: Keys.colorful) } }
     @Published var keepAwake: Bool {
         didSet {
@@ -186,6 +188,7 @@ final class ThemeSettings: ObservableObject {
         static let darkTheme = "sabboura.theme.dark"
         static let lightTheme = "sabboura.theme.light"
         static let content = "sabboura.theme.contentMatches"
+        static let nightPages = "sabboura.theme.nightPages"
         static let colorful = "sabboura.theme.colorfulFolders"
         static let keepAwake = "sabboura.theme.keepAwake"
     }
@@ -197,6 +200,7 @@ final class ThemeSettings: ObservableObject {
         darkTheme = AppTheme(rawValue: d.string(forKey: Keys.darkTheme) ?? "") ?? .darkBlue
         lightTheme = AppTheme(rawValue: d.string(forKey: Keys.lightTheme) ?? "") ?? .classic
         contentMatchesTheme = d.object(forKey: Keys.content) as? Bool ?? true
+        nightPages = d.object(forKey: Keys.nightPages) as? Bool ?? false
         colorfulFolders = d.object(forKey: Keys.colorful) as? Bool ?? false
         keepAwake = d.object(forKey: Keys.keepAwake) as? Bool ?? false
 
@@ -271,7 +275,7 @@ struct ThemedContainer<Content: View>: View {
         let theme = settings.theme(for: scheme)
         content
             .environment(\.appTheme, theme)
-            .environment(\.contentDark, theme.isDark && settings.contentMatchesTheme)
+            .environment(\.contentDark, settings.nightPages || (theme.isDark && settings.contentMatchesTheme))
             .tint(theme.accent)
             // خط Inter الافتراضي لكل النصوص (العربي يبقى بخط النظام)
             .font(.inter(.body))

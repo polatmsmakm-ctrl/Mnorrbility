@@ -19,11 +19,20 @@ enum PageBackgroundRenderer {
         context.setFillColor(UIColor(hex: colors.paper).cgColor)
         context.fill(pageRect)
 
-        // صفحات PDF في الوضع الداكن: «عكس ذكي» — الورق يصبح داكناً والنص فاتحاً مع بقاء درجة
-        // كل لون كما هي (الأزرق يبقى أزرق). نرسم الـPDF مرة واحدة في صورة ثم نركّبها ثلاث مرات.
+        // صفحات PDF في الوضع الداكن: «عكس ذكي» مثل Notability — الورق يصبح داكناً والنص فاتحاً مع
+        // بقاء درجة كل لون كما هي (الأزرق يبقى أزرقاً). نرسم الـPDF في صورة ثم نقلبها بـHueInvert.
         if let pdfPage, config.darkContent && config.isPDF,
            let rendered = renderPDFRegion(pdfPage, pageRect: pageRect, context: context) {
             let (image, region) = rendered
+            if let inverted = HueInvert.invert(image) {
+                drawImage(inverted, in: region, context: context)
+                drawPattern(config, lineHex: UIColor(hex: colors.line).hueInverted.hexString,
+                            marginHex: colors.margin.map { UIColor(hex: $0).hueInverted.hexString },
+                            in: pageRect, context: context)
+                context.restoreGState()
+                return
+            }
+            // احتياط: الطريقة القديمة بأنماط المزج
             drawImage(image, in: region, context: context)
             drawPattern(config, lineHex: colors.line, marginHex: colors.margin, in: pageRect, context: context)
             context.setBlendMode(.difference)
