@@ -33,7 +33,9 @@ private struct DockLayout: Layout {
 
         var cx: CGFloat, cy: CGFloat
         if let p = dragPoint {
-            cx = p.x; cy = p.y
+            // المقبض يبقى تحت الإصبع، والشريط يتبعه حيث مسكته
+            cx = p.x + (vertical ? 0 : w / 2 - 13)
+            cy = p.y + (vertical ? h / 2 - 13 : 0)
         } else {
             switch dock {
             case .top, .bottom:

@@ -23,8 +23,8 @@ struct FloatingToolbar: View, Equatable {
 
     private var grip: some View {
         Capsule()
-            .fill(theme.secondaryText.opacity(0.55))
-            .frame(width: vertical ? 26 : 4, height: vertical ? 4 : 22)
+            .fill(theme.secondaryText.opacity(0.8))
+            .frame(width: vertical ? 26 : 5, height: vertical ? 5 : 26)
             .frame(width: vertical ? 56 : 26, height: vertical ? 26 : 56)
     }
 
@@ -53,10 +53,7 @@ struct FloatingToolbar: View, Equatable {
             }
         }
         Group {
-            if compact {
-                content
-                    .frame(maxWidth: vertical ? nil : maxLength, maxHeight: vertical ? maxLength : nil)
-            } else if vertical {
+            if vertical {
                 VStack(spacing: 0) { grip; content }
                     .frame(maxHeight: maxLength)
             } else {
