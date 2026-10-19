@@ -3,7 +3,7 @@ import SwiftUI
 
 // MARK: - الشريط العائم في المحرر (الأدوات + صف الألوان)
 
-struct FloatingToolbar: View {
+struct FloatingToolbar: View, Equatable {
     @ObservedObject var controller: EditorController
     var onInsertImage: () -> Void
     var onTakePhoto: () -> Void
@@ -16,8 +16,17 @@ struct FloatingToolbar: View {
     var compact = false
     /// أقصى طول مسموح على محور الشريط (عرض أو ارتفاع)
     var maxLength: CGFloat = 560
-    /// مقبض السحب (يُمرَّر من الطبقة التي تحرّك الشريط)
-    var grip: AnyView = AnyView(EmptyView())
+    /// حتى لا يُعاد بناء الشريط كاملاً عند كل إطار سحب (كان هذا سبب التجمّد)
+    static func == (lhs: FloatingToolbar, rhs: FloatingToolbar) -> Bool {
+        lhs.vertical == rhs.vertical && lhs.compact == rhs.compact && lhs.maxLength == rhs.maxLength
+    }
+
+    private var grip: some View {
+        Capsule()
+            .fill(theme.secondaryText.opacity(0.55))
+            .frame(width: vertical ? 26 : 4, height: vertical ? 4 : 22)
+            .frame(width: vertical ? 56 : 26, height: vertical ? 26 : 56)
+    }
 
     @Environment(\.appTheme) private var theme
 

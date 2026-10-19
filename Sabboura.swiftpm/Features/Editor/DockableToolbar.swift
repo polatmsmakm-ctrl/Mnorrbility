@@ -105,8 +105,8 @@ struct DockableToolbarLayer: View {
                                 onImportFile: onImportFile,
                                 vertical: vertical,
                                 compact: dragging,
-                                maxLength: maxLength(for: dock, compact: dragging),
-                                grip: AnyView(grip(vertical: vertical)))
+                                maxLength: maxLength(for: dock, compact: dragging))
+                    .equatable()
                     .overlay(alignment: storedDock.isVertical ? .top : .leading) { gripHitArea }
             }
         }
@@ -116,14 +116,6 @@ struct DockableToolbarLayer: View {
     }
 
     // MARK: المقبض والسحب
-
-    /// شكل المقبض فقط (يحجز مكانه داخل الشريط)
-    private func grip(vertical: Bool) -> some View {
-        Capsule()
-            .fill(theme.secondaryText.opacity(0.55))
-            .frame(width: vertical ? 26 : 4, height: vertical ? 4 : 22)
-            .frame(width: vertical ? 56 : 26, height: vertical ? 26 : 56)
-    }
 
     /// منطقة اللمس للسحب: طبقة ثابتة فوق الشريط حتى لا ينقطع السحب عند تغيّر شكله.
     private var gripHitArea: some View {
@@ -156,12 +148,10 @@ struct DockableToolbarLayer: View {
             .onEnded { value in
                 let p = value.location
                 let dock = nearestDock(to: p)
-                var f = dock.isVertical ? p.y / max(area.height, 1) : p.x / max(area.width, 1)
-                f = min(max(f, 0), 1)
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 withAnimation(.spring(response: 0.38, dampingFraction: 0.86)) {
                     dockRaw = dock.rawValue
-                    frac = Double(f)
+                    frac = 0.5   // يلتصق دائماً في منتصف الحافة مثل نوتبلتي
                     dragLocation = nil
                 }
             }
