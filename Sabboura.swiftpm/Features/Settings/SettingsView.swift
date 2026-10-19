@@ -7,12 +7,13 @@ struct SettingsView: View {
     @Environment(\.appTheme) private var theme
 
     enum Page: String, CaseIterable, Identifiable {
-        case appearance, editor, review, trash, about
+        case appearance, editor, sounds, review, trash, about
         var id: String { rawValue }
         var title: String {
             switch self {
             case .appearance: return "المظهر"
             case .editor: return "محرر الملاحظات"
+            case .sounds: return "أصوات التركيز"
             case .review: return "المراجعة الذكية"
             case .trash: return "المحذوفة مؤخراً"
             case .about: return "حول التطبيق"
@@ -22,6 +23,7 @@ struct SettingsView: View {
             switch self {
             case .appearance: return "paintbrush"
             case .editor: return "pencil.and.outline"
+            case .sounds: return "waveform"
             case .review: return "rectangle.on.rectangle.angled"
             case .trash: return "trash"
             case .about: return "info.circle"
@@ -53,6 +55,7 @@ struct SettingsView: View {
                 switch page {
                 case .appearance: AppearanceSettingsView()
                 case .editor: EditorSettingsView()
+                case .sounds: SoundSettingsView()
                 case .review: ReviewSettingsView()
                 case .trash: TrashView()
                 case .about: AboutView()
@@ -260,6 +263,82 @@ struct EditorSettingsView: View {
     }
 }
 
+// MARK: - أصوات التركيز
+
+struct SoundSettingsView: View {
+    @Environment(\.appTheme) private var theme
+    @ObservedObject private var noise = WhiteNoiseManager.shared
+    @AppStorage(TimerAlert.key) private var alertEnabled = true
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle("تشغيل الصوت الآن", isOn: Binding(
+                    get: { noise.isPlaying },
+                    set: { $0 ? noise.play() : noise.stop() }
+                ))
+                .accessibilityIdentifier("noisePlaying")
+            } footer: {
+                Text("يستمر الصوت في الخلفية وأنت تكتب أو تقفل الشاشة، ويختلط مع أي صوت آخر على الجهاز.")
+            }
+
+            Section("نوع الصوت") {
+                ForEach(WhiteNoiseManager.Kind.allCases) { kind in
+                    Button {
+                        noise.kind = kind
+                    } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(kind.title).foregroundStyle(theme.primaryText)
+                                Text(kind.detail)
+                                    .font(.caption)
+                                    .foregroundStyle(theme.secondaryText)
+                            }
+                            Spacer()
+                            if noise.kind == kind {
+                                Image(systemName: "checkmark").foregroundStyle(theme.accent)
+                            }
+                        }
+                    }
+                    .accessibilityIdentifier("noiseKind.\(kind.rawValue)")
+                }
+            }
+
+            Section("مستوى الصوت") {
+                HStack(spacing: 12) {
+                    Image(systemName: "speaker.fill").foregroundStyle(theme.secondaryText)
+                    Slider(value: $noise.volume, in: 0.05...1)
+                        .accessibilityIdentifier("noiseVolume")
+                    Image(systemName: "speaker.wave.3.fill").foregroundStyle(theme.secondaryText)
+                }
+                .environment(\.layoutDirection, .leftToRight)
+            }
+
+            Section {
+                Toggle("تشغيله مع جلسة المذاكرة", isOn: $noise.playWithStudy)
+                    .accessibilityIdentifier("noiseWithStudy")
+            } footer: {
+                Text("يشتغل مع فترات الدراسة ويتوقف في الاستراحة وعند إيقاف المؤقت.")
+            }
+
+            Section {
+                Toggle("تنبيه عند انتهاء المؤقت", isOn: $alertEnabled)
+                    .accessibilityIdentifier("timerAlertToggle")
+                Button("جرّب التنبيه") { TimerAlert.preview() }
+                    .accessibilityIdentifier("timerAlertPreview")
+            } header: {
+                Text("تنبيه المؤقت")
+            } footer: {
+                Text("نغمة واهتزاز وبانر أعلى الشاشة عند انتهاء فترة الدراسة أو الاستراحة والتطبيق مفتوح. وفي الخلفية يصلك إشعار من النظام.")
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .background(theme.background.ignoresSafeArea())
+        .navigationTitle("أصوات التركيز")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
 // MARK: - المحذوفة مؤخراً
 
 struct TrashView: View {
@@ -354,7 +433,8 @@ struct AboutView: View {
                     feature("pencil.tip", "كتابة بقلم أبل وبالإصبع وبأي قلم عبر PencilKit")
                     feature("doc.richtext", "استيراد PDF والكتابة عليه وتصديره")
                     feature("moon.stars", "وضع داكن كامل يشمل الصفحات والحبر")
-                    feature("timer", "جلسات مذاكرة بمؤقت دراسة واستراحة")
+                    feature("timer", "جلسات مذاكرة بمؤقت دراسة واستراحة وتنبيه عند الانتهاء")
+                    feature("waveform", "وايت نويز (أبيض ووردي وبني) يعمل في الخلفية")
                     feature("lock.shield", "كل البيانات محفوظة على جهازك فقط")
                 }
                 .padding(20)

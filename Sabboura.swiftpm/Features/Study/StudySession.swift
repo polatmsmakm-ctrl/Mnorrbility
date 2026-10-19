@@ -24,8 +24,22 @@ final class StudySessionManager: ObservableObject {
     @Published var studyMinutes: Int { didSet { defaults.set(studyMinutes, forKey: Keys.study) } }
     @Published var breakMinutes: Int { didSet { defaults.set(breakMinutes, forKey: Keys.rest) } }
     @Published var totalSessions: Int { didSet { defaults.set(totalSessions, forKey: Keys.total) } }
-    @Published private(set) var running: Running? { didSet { persist() } }
+    @Published private(set) var running: Running? {
+        didSet {
+            persist()
+            syncNoise(from: oldValue)
+        }
+    }
     @Published private(set) var now = Date()
+    /// بانر «انتهت الفترة» الذي يظهر داخل التطبيق عند انتهاء المؤقت.
+    @Published private(set) var endNotice: EndNotice?
+
+    struct EndNotice: Identifiable, Equatable {
+        let id = UUID()
+        let title: String
+        let body: String
+        let symbol: String
+    }
 
     private let defaults = UserDefaults.standard
     private var timer: AnyCancellable?
@@ -119,17 +133,59 @@ final class StudySessionManager: ObservableObject {
             .sink { [weak self] date in
                 guard let self, self.running != nil else { return }
                 self.now = date
-                self.checkPhaseEnd()
+                self.checkPhaseEnd(announce: true)
             }
     }
 
-    private func checkPhaseEnd() {
+    /// `announce`: انتهت الفترة أمام المستخدم (التطبيق مفتوح) فننبّهه بنغمة واهتزاز وبانر.
+    private func checkPhaseEnd(announce: Bool = false) {
         guard let current = running, let end = current.endDate, end <= Date() else { return }
-        advance()
+        advance(announce: announce)
     }
 
-    private func advance() {
+    func dismissNotice(id: UUID? = nil) {
+        guard let notice = endNotice, id == nil || notice.id == id else { return }
+        withAnimation(.easeInOut(duration: 0.25)) { endNotice = nil }
+    }
+
+    /// نص انتهاء الفترة (يُستخدم في إشعار النظام وفي بانر التطبيق).
+    private func endMessage(for finished: Running) -> (title: String, body: String, symbol: String) {
+        if finished.phase == .study {
+            let allDone = finished.session >= totalSessions
+            return ("انتهت فترة الدراسة",
+                    allDone ? "أحسنت! أكملت كل الجلسات." : "خذ استراحة \(breakMinutes) دقيقة.",
+                    allDone ? "checkmark.seal.fill" : "cup.and.saucer.fill")
+        }
+        return ("انتهت الاستراحة",
+                "حان وقت الجلسة \(finished.session + 1) من \(totalSessions).",
+                "book.fill")
+    }
+
+    private func announceEnd(of finished: Running) {
+        guard TimerAlert.isEnabled, UIApplication.shared.applicationState == .active else { return }
+        let message = endMessage(for: finished)
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+            endNotice = EndNotice(title: message.title, body: message.body, symbol: message.symbol)
+        }
+        TimerAlert.fire()
+    }
+
+    /// الوايت نويز يعمل أثناء الدراسة فقط (إن فُعّل «مع جلسة المذاكرة») ويتوقف في الاستراحة وعند الإيقاف المؤقت.
+    private func syncNoise(from old: Running?) {
+        let noise = WhiteNoiseManager.shared
+        guard noise.playWithStudy else { return }
+        let shouldPlay = running?.phase == .study && running?.endDate != nil
+        let wasPlaying = old?.phase == .study && old?.endDate != nil
+        if shouldPlay && !wasPlaying {
+            noise.play()
+        } else if !shouldPlay && wasPlaying {
+            noise.stop()
+        }
+    }
+
+    private func advance(announce: Bool = false) {
         guard let current = running else { return }
+        if announce { announceEnd(of: current) }
         if current.phase == .study {
             logStudy(minutes: studyMinutes)
             if current.session >= totalSessions {
@@ -179,15 +235,9 @@ final class StudySessionManager: ObservableObject {
         cancelNotifications()
         guard let current = running, let end = current.endDate else { return }
         let content = UNMutableNotificationContent()
-        if current.phase == .study {
-            content.title = "انتهت فترة الدراسة"
-            content.body = current.session >= totalSessions
-                ? "أحسنت! أكملت كل الجلسات."
-                : "خذ استراحة \(breakMinutes) دقيقة."
-        } else {
-            content.title = "انتهت الاستراحة"
-            content.body = "حان وقت الجلسة \(current.session + 1) من \(totalSessions)."
-        }
+        let message = endMessage(for: current)
+        content.title = message.title
+        content.body = message.body
         content.sound = .default
         let interval = max(1, end.timeIntervalSinceNow)
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: interval, repeats: false)
@@ -204,6 +254,7 @@ final class StudySessionManager: ObservableObject {
 
 struct StudySetupView: View {
     @EnvironmentObject private var study: StudySessionManager
+    @ObservedObject private var noise = WhiteNoiseManager.shared
     @Environment(\.dismiss) private var dismiss
     @Environment(\.appTheme) private var theme
 
@@ -225,6 +276,8 @@ struct StudySetupView: View {
                               selected: study.breakMinutes, target: .rest) { study.breakMinutes = $0 }
                     optionRow(title: "عدد الجلسات", values: [2, 4, 6, 8, 10],
                               selected: study.totalSessions, target: .total) { study.totalSessions = $0 }
+
+                    noiseSection
 
                     if study.minutesToday > 0 {
                         Label("درست اليوم \(study.minutesToday) دقيقة", systemImage: "chart.bar.fill")
@@ -277,6 +330,32 @@ struct StudySetupView: View {
             }
         }
         .presentationDetents([.large])
+    }
+
+    private var noiseSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("صوت التركيز").font(.headline).foregroundStyle(theme.primaryText)
+            Toggle(isOn: $noise.playWithStudy) {
+                Text("وايت نويز أثناء الدراسة").foregroundStyle(theme.primaryText)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(theme.card, in: RoundedRectangle(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(theme.border, lineWidth: 1))
+            .accessibilityIdentifier("studyNoiseToggle")
+            if noise.playWithStudy {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 10) {
+                        ForEach(WhiteNoiseManager.Kind.allCases) { kind in
+                            chip(label: kind.title, isSelected: noise.kind == kind) { noise.kind = kind }
+                        }
+                    }
+                }
+                Text("يشتغل مع كل فترة دراسة ويتوقف في الاستراحة. المستوى والمزيد من الخيارات في الإعدادات ← أصوات التركيز.")
+                    .font(.caption)
+                    .foregroundStyle(theme.secondaryText)
+            }
+        }
     }
 
     private func optionRow(title: String, values: [Int], selected: Int, target: CustomTarget,
@@ -334,6 +413,7 @@ struct StudySetupView: View {
 struct StudyTimerPill: View {
     @EnvironmentObject private var study: StudySessionManager
     @EnvironmentObject private var appState: AppState
+    @ObservedObject private var noise = WhiteNoiseManager.shared
     @Environment(\.appTheme) private var theme
 
     var body: some View {
@@ -357,6 +437,15 @@ struct StudyTimerPill: View {
                 }
                 .accessibilityIdentifier("studyPause")
                 Button {
+                    noise.toggle()
+                } label: {
+                    Image(systemName: noise.isPlaying ? "waveform.circle.fill" : "waveform.circle")
+                        .font(.system(size: 20))
+                        .foregroundStyle(noise.isPlaying ? theme.accent : theme.secondaryText)
+                        .frame(width: 30, height: 30)
+                }
+                .accessibilityIdentifier("studyNoise")
+                Button {
                     study.stop()
                 } label: {
                     Image(systemName: "stop.fill")
@@ -374,6 +463,56 @@ struct StudyTimerPill: View {
             .onTapGesture { appState.showStudySetup = true }
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("studyPill")
+        }
+    }
+}
+
+// MARK: - بانر انتهاء الفترة
+
+/// يظهر أعلى الشاشة عند انتهاء فترة الدراسة أو الاستراحة والتطبيق مفتوح، ويختفي تلقائياً بعد ثوانٍ.
+struct StudyEndBanner: View {
+    @EnvironmentObject private var study: StudySessionManager
+    @Environment(\.appTheme) private var theme
+
+    var body: some View {
+        if let notice = study.endNotice {
+            HStack(spacing: 12) {
+                Image(systemName: notice.symbol)
+                    .font(.system(size: 26))
+                    .foregroundStyle(theme.accent)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(notice.title)
+                        .font(.headline)
+                        .foregroundStyle(theme.primaryText)
+                    Text(notice.body)
+                        .font(.subheadline)
+                        .foregroundStyle(theme.secondaryText)
+                }
+                Spacer(minLength: 8)
+                Button {
+                    study.dismissNotice(id: notice.id)
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 22))
+                        .foregroundStyle(theme.secondaryText)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("dismissStudyEnd")
+            }
+            .padding(14)
+            .frame(maxWidth: 440)
+            .background(theme.toolbar, in: RoundedRectangle(cornerRadius: 18))
+            .overlay(RoundedRectangle(cornerRadius: 18).stroke(theme.border, lineWidth: 1))
+            .shadow(color: .black.opacity(0.25), radius: 10, y: 4)
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            .transition(.move(edge: .top).combined(with: .opacity))
+            .task(id: notice.id) {
+                try? await Task.sleep(nanoseconds: 12_000_000_000)
+                study.dismissNotice(id: notice.id)
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("studyEndBanner")
         }
     }
 }

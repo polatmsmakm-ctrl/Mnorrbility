@@ -22,6 +22,8 @@ final class AudioRecorder: NSObject, AVAudioRecorderDelegate {
     }
 
     private func beginRecording() -> Bool {
+        // الوايت نويز (إن كان شغّالاً) يتوقف مؤقتاً أثناء التسجيل حتى لا يدخل في الصوت المسجّل
+        WhiteNoiseManager.shared.suspendForRecording()
         let session = AVAudioSession.sharedInstance()
         do {
             try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth])
@@ -35,12 +37,16 @@ final class AudioRecorder: NSObject, AVAudioRecorderDelegate {
             ]
             let recorder = try AVAudioRecorder(url: url, settings: settings)
             recorder.delegate = self
-            guard recorder.record() else { return false }
+            guard recorder.record() else {
+                WhiteNoiseManager.shared.resumeAfterRecording()
+                return false
+            }
             self.recorder = recorder
             startDate = Date()
             return true
         } catch {
             print("⚠️ Recording failed: \(error)")
+            WhiteNoiseManager.shared.resumeAfterRecording()
             return false
         }
     }
@@ -53,6 +59,7 @@ final class AudioRecorder: NSObject, AVAudioRecorderDelegate {
         self.recorder = nil
         startDate = nil
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        WhiteNoiseManager.shared.resumeAfterRecording()
         return (recorder.url, duration)
     }
 }

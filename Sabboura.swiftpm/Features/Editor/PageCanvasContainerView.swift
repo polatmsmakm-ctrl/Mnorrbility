@@ -38,6 +38,10 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
     private let backgroundView = PageBackgroundView()
     private let lassoLayer = CAShapeLayer()
     private let areaGesture = LassoPathGestureRecognizer(target: nil, action: nil)
+    /// مؤشر الليزر: طبقة فوق اللوحة (لا تتحرك مع التمرير) والتقاط لمس مستقل عن ممحاة التحديد
+    private let laserView = LaserTrailView()
+    private let laserGesture = LassoPathGestureRecognizer(target: nil, action: nil)
+    private var laserProcessedPoints = 0
 
     private var pages: [PageRenderInfo] = []
     private var contentExtent = DataStore.standardPageSize
@@ -112,6 +116,15 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
         areaGesture.isEnabled = false
         areaGesture.cancelsTouchesInView = true
         canvas.addGestureRecognizer(areaGesture)
+
+        laserGesture.addTarget(self, action: #selector(handleLaserGesture(_:)))
+        laserGesture.isEnabled = false
+        laserGesture.cancelsTouchesInView = true
+        canvas.addGestureRecognizer(laserGesture)
+
+        laserView.frame = bounds
+        laserView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        addSubview(laserView)
 
         let pencilInteraction = UIPencilInteraction()
         pencilInteraction.delegate = self
@@ -194,22 +207,31 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
         lassoLayer.strokeColor = tint.withAlphaComponent(0.9).cgColor
         lassoLayer.fillColor = tint.withAlphaComponent(0.08).cgColor
         itemsOverlay.isEditingEnabled = textMode
-        setAreaEraseActive(areaMode, allowFinger: state.fingerDrawing)
-        canvas.drawingGestureRecognizer.isEnabled = !(areaMode || textMode)
-        if !areaMode && !textMode {
+        let laserMode = state.tools.kind == .laser
+        laserView.color = UIColor(hex: state.tools.color(for: .laser))
+        laserView.dotSize = CGFloat(state.tools.width(for: .laser))
+        setAreaEraseActive(areaMode, laser: laserMode, allowFinger: state.fingerDrawing)
+        canvas.drawingGestureRecognizer.isEnabled = !(areaMode || textMode || laserMode)
+        if !areaMode && !textMode && !laserMode {
             canvas.tool = state.tools.makePKTool()
         }
     }
 
-    private func setAreaEraseActive(_ active: Bool, allowFinger: Bool) {
+    private func setAreaEraseActive(_ active: Bool, laser: Bool = false, allowFinger: Bool) {
         areaGesture.isEnabled = active
+        laserGesture.isEnabled = laser
         var touchTypes = [NSNumber(value: UITouch.TouchType.pencil.rawValue)]
         if allowFinger {
             touchTypes.append(NSNumber(value: UITouch.TouchType.direct.rawValue))
         }
         areaGesture.allowedTouchTypes = touchTypes
+        laserGesture.allowedTouchTypes = touchTypes
+        if !laser {
+            laserView.clear()
+            laserProcessedPoints = 0
+        }
 
-        if active && allowFinger {
+        if (active || laser) && allowFinger {
             if savedPanMinimumTouches == nil {
                 savedPanMinimumTouches = canvas.panGestureRecognizer.minimumNumberOfTouches
             }
@@ -465,6 +487,28 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
             CATransaction.commit()
         default:
             lassoLayer.path = nil
+        }
+    }
+
+    // MARK: مؤشر الليزر
+
+    @objc private func handleLaserGesture(_ gesture: LassoPathGestureRecognizer) {
+        switch gesture.state {
+        case .began, .changed:
+            // نقاط اللمس بإحداثيات اللوحة (محتوى مُمرَّر)، فنحوّلها لإحداثيات الشاشة
+            let points = gesture.points
+            guard laserProcessedPoints < points.count else { return }
+            let fresh = points[laserProcessedPoints...].map { canvas.convert($0, to: laserView) }
+            if laserProcessedPoints == 0, let first = fresh.first {
+                laserView.begin(at: first)
+                laserView.append(Array(fresh.dropFirst()))
+            } else {
+                laserView.append(fresh)
+            }
+            laserProcessedPoints = points.count
+        default:
+            laserProcessedPoints = 0
+            laserView.end()
         }
     }
 

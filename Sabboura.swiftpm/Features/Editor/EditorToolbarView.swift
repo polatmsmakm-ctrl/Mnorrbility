@@ -36,6 +36,7 @@ struct FloatingToolbar: View {
                 ToolIconButton(kind: .text, symbol: "textformat", controller: controller)
                 ToolIconButton(kind: .lasso, symbol: "lasso", controller: controller)
                 ToolIconButton(kind: .tidy, symbol: "wand.and.stars", controller: controller)
+                ToolIconButton(kind: .laser, symbol: "scope", controller: controller)
 
                 insertMenu
                 recordButton
@@ -459,6 +460,8 @@ struct ToolOptionsView: View {
                     eraserOptions
                 } else if kind == .tidy {
                     tidyOptions
+                } else if kind == .laser {
+                    laserOptions
                 } else {
                     Text("ارسم دائرة حول الكتابة لتحديدها، ثم اسحبها لنقلها، أو المس التحديد لإظهار خيارات النسخ والقص والتكرار والحذف.")
                         .font(.inter(.callout))
@@ -513,6 +516,48 @@ struct ToolOptionsView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.top, 8)
         }
+    }
+
+    private static let laserColors = ["#FF2D2D", "#34C759", "#0A7AFF", "#FFD60A", "#FF2DAA"]
+
+    @ViewBuilder
+    private var laserOptions: some View {
+        Text("حرّك إصبعك أو القلم فوق الصفحة فيظهر مؤشر ليزر بذيل يتلاشى بسرعة، ولا يُكتب شيء على الصفحة. مناسب للشرح والعرض.")
+            .font(.callout)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+
+        HStack {
+            Text("الحجم")
+            Spacer()
+            Text(String(format: "%.0f", controller.width(for: kind)))
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+        }
+        Slider(value: widthBinding, in: kind.widthRange)
+            .accessibilityIdentifier("laserSize")
+
+        HStack(spacing: 14) {
+            ForEach(Self.laserColors, id: \.self) { hex in
+                let selected = controller.tools.color(for: kind).uppercased() == hex.uppercased()
+                Button {
+                    controller.setColor(hex, for: kind)
+                } label: {
+                    Circle()
+                        .fill(Color(uiColor: UIColor(hex: hex)))
+                        .frame(width: 34, height: 34)
+                        .overlay(Circle().stroke(Color.primary.opacity(0.2), lineWidth: 1))
+                        .overlay(
+                            Circle()
+                                .stroke(Color.accentColor, lineWidth: selected ? 3 : 0)
+                                .padding(-4)
+                        )
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("laserColor.\(hex)")
+            }
+        }
+        .padding(.vertical, 4)
     }
 
     @ViewBuilder
