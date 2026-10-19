@@ -79,7 +79,6 @@ final class AppState: ObservableObject {
                 noteDebug("restore-note")
                 DispatchQueue.main.async {
                     self.path = [note]
-                    self.columnVisibility = .detailOnly
                 }
                 return
             }
@@ -118,7 +117,6 @@ final class AppState: ObservableObject {
     private func restoreIfNeeded() {
         guard let note = resumeNote, note.isAlive else { return }
         if path.last != note { path = [note] }
-        if AppEnvironment.isPad, columnVisibility != .detailOnly { columnVisibility = .detailOnly }
     }
     @Published var searchText = ""
     @Published var notesTab: NotesTab = .all
