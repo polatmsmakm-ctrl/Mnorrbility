@@ -71,6 +71,7 @@ struct DockableToolbarLayer: View {
     @AppStorage("sabboura.toolbar.frac") private var frac = 0.5
 
     @State private var dragLocation: CGPoint?
+    @State private var lastHapticDock: ToolbarDock?
 
     @Environment(\.appTheme) private var theme
 
@@ -110,10 +111,8 @@ struct DockableToolbarLayer: View {
             }
         }
         .frame(width: area.width, height: area.height)
-        .animation(.spring(response: 0.34, dampingFraction: 0.85), value: dockRaw)
-        .animation(.spring(response: 0.34, dampingFraction: 0.85), value: frac)
-        .animation(.easeInOut(duration: 0.18), value: dragging)
-        .animation(.spring(response: 0.3, dampingFraction: 0.85), value: dock)
+        // لا نحرّك شيئاً بالحركة الضمنية أثناء السحب (كانت تتعارض وتبطّئ الشريط)؛ الحركة فقط عند الإفلات وبداية السحب
+        .animation(.spring(response: 0.3, dampingFraction: 0.82), value: dragging)
     }
 
     // MARK: المقبض والسحب
@@ -130,7 +129,7 @@ struct DockableToolbarLayer: View {
     private var gripHitArea: some View {
         let v = storedDock.isVertical
         return Color.clear
-            .frame(width: v ? 56 : 30, height: v ? 30 : 56)
+            .frame(width: v ? 100 : 30, height: v ? 30 : 100)
             .contentShape(Rectangle())
             .gesture(dragGesture)
             .accessibilityLabel("تحريك شريط الأدوات")
@@ -140,14 +139,27 @@ struct DockableToolbarLayer: View {
     private var dragGesture: some Gesture {
         DragGesture(minimumDistance: 3, coordinateSpace: .named("editorArea"))
             .onChanged { value in
-                dragLocation = value.location
+                let first = dragLocation == nil
+                if first {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    lastHapticDock = nearestDock(to: value.location)
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) { dragLocation = value.location }
+                } else {
+                    dragLocation = value.location
+                    let d = nearestDock(to: value.location)
+                    if d != lastHapticDock {
+                        lastHapticDock = d
+                        UISelectionFeedbackGenerator().selectionChanged()
+                    }
+                }
             }
             .onEnded { value in
                 let p = value.location
                 let dock = nearestDock(to: p)
                 var f = dock.isVertical ? p.y / max(area.height, 1) : p.x / max(area.width, 1)
                 f = min(max(f, 0), 1)
-                withAnimation(.spring(response: 0.34, dampingFraction: 0.85)) {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                withAnimation(.spring(response: 0.38, dampingFraction: 0.86)) {
                     dockRaw = dock.rawValue
                     frac = Double(f)
                     dragLocation = nil
