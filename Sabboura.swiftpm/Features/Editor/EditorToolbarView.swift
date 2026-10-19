@@ -12,6 +12,8 @@ struct FloatingToolbar: View {
     var onImportFile: () -> Void
     /// عمودي عندما يكون الشريط ملتصقاً باليمين أو اليسار
     var vertical = false
+    /// أثناء السحب: كبسولة أدوات فقط (مثل نوتبلتي)
+    var compact = false
     /// أقصى طول مسموح على محور الشريط (عرض أو ارتفاع)
     var maxLength: CGFloat = 560
     /// مقبض السحب (يُمرَّر من الطبقة التي تحرّك الشريط)
@@ -32,15 +34,20 @@ struct FloatingToolbar: View {
     private var axis: Axis.Set { vertical ? .vertical : .horizontal }
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: 26, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: compact ? 22 : 24, style: .continuous)
         let content = outer {
             toolsRow
-            Rectangle().fill(theme.border)
-                .frame(width: vertical ? 1 : nil, height: vertical ? nil : 1)
-            colorsRow
+            if !compact {
+                Rectangle().fill(theme.border)
+                    .frame(width: vertical ? 1 : nil, height: vertical ? nil : 1)
+                colorsRow
+            }
         }
         Group {
-            if vertical {
+            if compact {
+                content
+                    .frame(maxWidth: vertical ? nil : maxLength, maxHeight: vertical ? maxLength : nil)
+            } else if vertical {
                 VStack(spacing: 0) { grip; content }
                     .frame(maxHeight: maxLength)
             } else {
@@ -260,9 +267,9 @@ struct ChromeIcon: View {
 
     var body: some View {
         Image(systemName: symbol)
-            .font(.system(size: 19, weight: .medium))
+            .font(.system(size: 17, weight: .regular))
             .foregroundStyle(active ? (activeColor ?? theme.accent) : theme.primaryText)
-            .frame(width: 40, height: 36)
+            .frame(width: 36, height: 34)
             .background(RoundedRectangle(cornerRadius: 10)
                 .fill(active ? (activeColor ?? theme.accent).opacity(0.16) : Color.clear))
             .contentShape(Rectangle())
@@ -284,14 +291,14 @@ struct ToolIconButton: View {
         } label: {
             VStack(spacing: 2) {
                 Image(systemName: symbol)
-                    .font(.system(size: 19, weight: .medium))
-                    .frame(width: 34, height: 24)
+                    .font(.system(size: 17, weight: .regular))
+                    .frame(width: 32, height: 22)
                 Capsule()
                     .fill(selected ? (kind.isInk ? controller.displayColor(controller.tools.color(for: kind)) : theme.accent) : Color.clear)
                     .frame(width: 18, height: 3)
             }
             .foregroundStyle(selected ? theme.accent : theme.primaryText)
-            .frame(width: 40, height: 36)
+            .frame(width: 36, height: 34)
             .background(RoundedRectangle(cornerRadius: 10).fill(selected ? theme.accent.opacity(0.14) : Color.clear))
             .contentShape(Rectangle())
         }
@@ -320,18 +327,18 @@ struct SwatchButton: View {
             ZStack {
                 Circle()
                     .fill(controller.displayColor(hex))
-                    .frame(width: 28, height: 28)
+                    .frame(width: 24, height: 24)
                     .overlay(Circle().stroke(Color.primary.opacity(0.18), lineWidth: 1))
                 if selected {
                     Circle()
-                        .stroke(Color.accentColor, lineWidth: 2.5)
-                        .frame(width: 35, height: 35)
+                        .stroke(Color.accentColor, lineWidth: 2)
+                        .frame(width: 31, height: 31)
                     Image(systemName: "pencil")
-                        .font(.system(size: 11, weight: .bold))
+                        .font(.system(size: 10, weight: .bold))
                         .foregroundStyle(Color(uiColor: UIColor(hex: hex).isDark && !controller.contentDark ? .white : .black).opacity(0.75))
                 }
             }
-            .frame(width: 36, height: 36)
+            .frame(width: 32, height: 32)
             .contentShape(Circle())
         }
         .buttonStyle(.plain)

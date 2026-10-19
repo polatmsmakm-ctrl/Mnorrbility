@@ -34,21 +34,14 @@ struct EditorView: View {
 
     private var isPad: Bool { AppEnvironment.isPad }
     private var toolbarHeight: CGFloat { isPad ? 118 : 156 }
-    @AppStorage("sabboura.toolbar.dock") private var toolbarDockRaw = ToolbarDock.top.rawValue
     /// شريط الأدوات على الأطراف: لا نحجز له مكاناً أعلى الصفحة، وفوقها فقط صف الأزرار
-    private var padDock: ToolbarDock { ToolbarDock(rawValue: toolbarDockRaw) ?? .top }
-    private var topInset: CGFloat {
-        guard isPad else { return toolbarHeight }
-        return padDock == .top ? toolbarHeight : 66
-    }
-    private var bottomExtra: CGFloat { isPad && padDock == .bottom ? 110 : 0 }
-
+    // الشريط يطفو فوق الصفحة (مثل نوتبلتي)؛ هوامش اللوحة ثابتة حتى لا تقفز الصفحة عند تغيير مكانه
     var body: some View {
         GeometryReader { proxy in
             ZStack(alignment: .top) {
                 CanvasRepresentable(controller: controller,
-                                    topInset: topInset + proxy.safeAreaInsets.top,
-                                    bottomInset: 20 + bottomExtra + proxy.safeAreaInsets.bottom)
+                                    topInset: toolbarHeight + proxy.safeAreaInsets.top,
+                                    bottomInset: 20 + proxy.safeAreaInsets.bottom)
                     .environment(\.layoutDirection, .leftToRight)
                     .ignoresSafeArea()
 
