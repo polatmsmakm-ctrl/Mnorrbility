@@ -25,6 +25,9 @@ struct FloatingToolbar: View {
     private func inner(spacing: CGFloat) -> AnyLayout {
         vertical ? AnyLayout(VStackLayout(spacing: spacing)) : AnyLayout(HStackLayout(spacing: spacing))
     }
+    private func stack<Content: View>(spacing: CGFloat, @ViewBuilder _ content: () -> Content) -> some View {
+        inner(spacing: spacing) { content() }
+    }
     private var axis: Axis.Set { vertical ? .vertical : .horizontal }
 
     var body: some View {
@@ -53,7 +56,7 @@ struct FloatingToolbar: View {
     // صف الأدوات
     private var toolsRow: some View {
         ScrollView(axis, showsIndicators: false) {
-            inner(spacing: 2) {
+            stack(spacing: 2) {
                 ToolIconButton(kind: .pen, symbol: "pencil.tip", controller: controller)
                 ToolIconButton(kind: .pencil, symbol: "pencil", controller: controller)
                 ToolIconButton(kind: .marker, symbol: "highlighter", controller: controller)
@@ -186,7 +189,7 @@ struct FloatingToolbar: View {
     // صف الألوان
     private var colorsRow: some View {
         ScrollView(axis, showsIndicators: false) {
-            inner(spacing: 10) {
+            stack(spacing: 10) {
                 ForEach(Array(controller.tools.swatches.enumerated()), id: \.offset) { index, hex in
                     SwatchButton(index: index, hex: hex, controller: controller)
                 }
