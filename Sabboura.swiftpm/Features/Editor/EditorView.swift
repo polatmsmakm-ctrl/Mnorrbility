@@ -34,13 +34,21 @@ struct EditorView: View {
 
     private var isPad: Bool { AppEnvironment.isPad }
     private var toolbarHeight: CGFloat { isPad ? 118 : 156 }
+    @AppStorage("sabboura.toolbar.dock") private var toolbarDockRaw = ToolbarDock.top.rawValue
+    /// شريط الأدوات على الأطراف: لا نحجز له مكاناً أعلى الصفحة، وفوقها فقط صف الأزرار
+    private var padDock: ToolbarDock { ToolbarDock(rawValue: toolbarDockRaw) ?? .top }
+    private var topInset: CGFloat {
+        guard isPad else { return toolbarHeight }
+        return padDock == .top ? toolbarHeight : 66
+    }
+    private var bottomExtra: CGFloat { isPad && padDock == .bottom ? 110 : 0 }
 
     var body: some View {
         GeometryReader { proxy in
             ZStack(alignment: .top) {
                 CanvasRepresentable(controller: controller,
-                                    topInset: toolbarHeight + proxy.safeAreaInsets.top,
-                                    bottomInset: 20 + proxy.safeAreaInsets.bottom)
+                                    topInset: topInset + proxy.safeAreaInsets.top,
+                                    bottomInset: 20 + bottomExtra + proxy.safeAreaInsets.bottom)
                     .environment(\.layoutDirection, .leftToRight)
                     .ignoresSafeArea()
 
@@ -52,7 +60,18 @@ struct EditorView: View {
                     .accessibilityHidden(true)
 
                 chrome
+
+                if isPad {
+                    DockableToolbarLayer(controller: controller,
+                                         area: proxy.size,
+                                         onInsertImage: { showPhotoPicker = true },
+                                         onTakePhoto: { takePhoto() },
+                                         onImageFromFiles: { imageFromFiles() },
+                                         onImportPDF: { importPDF() },
+                                         onImportFile: { importFile() })
+                }
             }
+            .coordinateSpace(name: "editorArea")
         }
         .overlay(alignment: .bottomTrailing) {
             VerticalPageNavigator(controller: controller, onShowPages: { showPages = true })
@@ -182,14 +201,6 @@ struct EditorView: View {
                 HStack(alignment: .top, spacing: 12) {
                     backButton
                     Spacer(minLength: 8)
-                    FloatingToolbar(controller: controller,
-                                    onInsertImage: { showPhotoPicker = true },
-                                    onTakePhoto: { takePhoto() },
-                                    onImageFromFiles: { imageFromFiles() },
-                                    onImportPDF: { importPDF() },
-                                    onImportFile: { importFile() })
-                        .frame(maxWidth: 560)
-                    Spacer(minLength: 8)
                     actionCluster
                 }
                 toastView
@@ -225,6 +236,7 @@ struct EditorView: View {
     private var backButton: some View {
         Button {
             controller.flush()
+            appState.userClosedNote()
             dismiss()
         } label: {
             Image(systemName: "arrow.left")

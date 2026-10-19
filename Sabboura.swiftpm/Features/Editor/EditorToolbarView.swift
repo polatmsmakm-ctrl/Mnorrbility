@@ -10,25 +10,50 @@ struct FloatingToolbar: View {
     var onImageFromFiles: () -> Void
     var onImportPDF: () -> Void
     var onImportFile: () -> Void
+    /// عمودي عندما يكون الشريط ملتصقاً باليمين أو اليسار
+    var vertical = false
+    /// أقصى طول مسموح على محور الشريط (عرض أو ارتفاع)
+    var maxLength: CGFloat = 560
+    /// مقبض السحب (يُمرَّر من الطبقة التي تحرّك الشريط)
+    var grip: AnyView = AnyView(EmptyView())
 
     @Environment(\.appTheme) private var theme
 
+    private var outer: AnyLayout {
+        vertical ? AnyLayout(HStackLayout(spacing: 0)) : AnyLayout(VStackLayout(spacing: 0))
+    }
+    private func inner(spacing: CGFloat) -> AnyLayout {
+        vertical ? AnyLayout(VStackLayout(spacing: spacing)) : AnyLayout(HStackLayout(spacing: spacing))
+    }
+    private var axis: Axis.Set { vertical ? .vertical : .horizontal }
+
     var body: some View {
-        VStack(spacing: 0) {
+        let shape = RoundedRectangle(cornerRadius: 26, style: .continuous)
+        let content = outer {
             toolsRow
-            Rectangle().fill(theme.border).frame(height: 1)
+            Rectangle().fill(theme.border)
+                .frame(width: vertical ? 1 : nil, height: vertical ? nil : 1)
             colorsRow
         }
-        .background(theme.toolbar, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(theme.border, lineWidth: 1))
-        .shadow(color: .black.opacity(theme.isDark ? 0.4 : 0.12), radius: 12, y: 4)
+        Group {
+            if vertical {
+                VStack(spacing: 0) { grip; content }
+                    .frame(maxHeight: maxLength)
+            } else {
+                HStack(spacing: 0) { grip; content }
+                    .frame(maxWidth: maxLength)
+            }
+        }
+        .background(theme.toolbar.opacity(0.96), in: shape)
+        .overlay(shape.stroke(theme.border, lineWidth: 1))
+        .shadow(color: .black.opacity(theme.isDark ? 0.45 : 0.14), radius: 14, y: 5)
         .environment(\.layoutDirection, .leftToRight)
     }
 
     // صف الأدوات
     private var toolsRow: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 2) {
+        ScrollView(axis, showsIndicators: false) {
+            inner(spacing: 2) {
                 ToolIconButton(kind: .pen, symbol: "pencil.tip", controller: controller)
                 ToolIconButton(kind: .pencil, symbol: "pencil", controller: controller)
                 ToolIconButton(kind: .marker, symbol: "highlighter", controller: controller)
@@ -48,13 +73,16 @@ struct FloatingToolbar: View {
                 }
                 moreToolsButton
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 5)
+            .padding(.horizontal, vertical ? 5 : 8)
+            .padding(.vertical, vertical ? 8 : 5)
         }
     }
 
     private var divider: some View {
-        Rectangle().fill(theme.border).frame(width: 1, height: 26).padding(.horizontal, 4)
+        Rectangle().fill(theme.border)
+            .frame(width: vertical ? 26 : 1, height: vertical ? 1 : 26)
+            .padding(.horizontal, vertical ? 0 : 4)
+            .padding(.vertical, vertical ? 4 : 0)
     }
 
     private var insertMenu: some View {
@@ -157,16 +185,18 @@ struct FloatingToolbar: View {
 
     // صف الألوان
     private var colorsRow: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 10) {
+        ScrollView(axis, showsIndicators: false) {
+            inner(spacing: 10) {
                 ForEach(Array(controller.tools.swatches.enumerated()), id: \.offset) { index, hex in
                     SwatchButton(index: index, hex: hex, controller: controller)
                 }
-                Rectangle().fill(theme.border).frame(width: 1, height: 26).padding(.horizontal, 2)
+                Rectangle().fill(theme.border)
+                    .frame(width: vertical ? 26 : 1, height: vertical ? 1 : 26)
+                    .padding(vertical ? .vertical : .horizontal, 2)
                 sizeButton
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 7)
+            .padding(.horizontal, vertical ? 7 : 12)
+            .padding(.vertical, vertical ? 12 : 7)
         }
         .popover(isPresented: controller.popoverBinding(.color)) {
             ColorPaletteView(hex: Binding(

@@ -65,7 +65,8 @@ final class AppState: ObservableObject {
             guard oldValue != selection else { return }
             let name = selection.map { String(describing: $0) } ?? "nil"
             noteDebug("sel=" + String(name.prefix(14)))
-            path = []
+            // عند الرجوع للتطبيق قد تعيد القائمة الجانبية تعيين الاختيار؛ هذا لا يجب أن يغلق المذكرة
+            if !isResuming { path = [] }
         }
     }
     @Published var compactColumn: NavigationSplitViewColumn = .sidebar
@@ -73,6 +74,15 @@ final class AppState: ObservableObject {
         didSet {
             guard path.count != oldValue.count else { return }
             noteDebug("path=\(path.count)")
+            // إغلاق غير مقصود أثناء الرجوع من الخلفية: نعيد فتح المذكرة نفسها
+            if isResuming, path.isEmpty, let note = oldValue.last, note.isAlive {
+                noteDebug("restore-note")
+                DispatchQueue.main.async {
+                    self.path = [note]
+                    self.columnVisibility = .detailOnly
+                }
+                return
+            }
             // الآيباد: شاشة الكتابة بملء الشاشة، والقائمة الجانبية تعود عند الرجوع
             if AppEnvironment.isPad && path.isEmpty != oldValue.isEmpty {
                 let target: NavigationSplitViewVisibility = path.isEmpty ? .all : .detailOnly
@@ -85,6 +95,38 @@ final class AppState: ObservableObject {
     /// شاشة الكتابة تطلب إخفاء شريط الحالة (يُطبَّق من الجذر لأنه لا يعمل من داخل التنقّل)
     @Published var hideStatusBar = false
     @Published var columnVisibility: NavigationSplitViewVisibility = .all
+
+    /// نحو ثانيتين بعد العودة من الخلفية نعتبر أي تغيّر في التنقّل ناتجاً عن النظام لا عن المستخدم.
+    private(set) var isResuming = false
+    private var resumeNote: CDNote?
+    private var resumeTask: DispatchWorkItem?
+
+    /// المستخدم أغلق المذكرة بنفسه (زر الرجوع): لا تُستعاد.
+    func userClosedNote() {
+        resumeNote = nil
+    }
+
+    func sceneWentInactive() {
+        resumeTask?.cancel()
+        isResuming = true
+        resumeNote = path.last
+    }
+
+    func sceneBecameActive() {
+        isResuming = true
+        restoreIfNeeded()
+        // النظام قد يعيد بناء التنقّل بعد لحظات؛ نتحقق مرة ثانية قبل إنهاء الحماية
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in self?.restoreIfNeeded() }
+        let work = DispatchWorkItem { [weak self] in self?.isResuming = false }
+        resumeTask = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0, execute: work)
+    }
+
+    private func restoreIfNeeded() {
+        guard let note = resumeNote, note.isAlive else { return }
+        if path.last != note { path = [note] }
+        if AppEnvironment.isPad, columnVisibility != .detailOnly { columnVisibility = .detailOnly }
+    }
     @Published var searchText = ""
     @Published var notesTab: NotesTab = .all
     @Published var showSettings = false
@@ -202,9 +244,11 @@ struct RootView: View {
         }
         .onChange(of: scenePhase) { _, phase in
             if phase != .active {
+                appState.sceneWentInactive()
                 NotificationCenter.default.post(name: .sabbouraFlushRequested, object: nil)
                 DataStore.save(context)
             } else {
+                appState.sceneBecameActive()
                 study.refresh()
             }
         }
