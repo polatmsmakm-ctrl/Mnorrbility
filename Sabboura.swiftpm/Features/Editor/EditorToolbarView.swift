@@ -26,7 +26,8 @@ struct FloatingToolbar: View {
         vertical ? AnyLayout(VStackLayout(spacing: spacing)) : AnyLayout(HStackLayout(spacing: spacing))
     }
     private func stack<Content: View>(spacing: CGFloat, @ViewBuilder _ content: () -> Content) -> some View {
-        inner(spacing: spacing) { content() }
+        let layout = inner(spacing: spacing)
+        return layout { content() }
     }
     private var axis: Axis.Set { vertical ? .vertical : .horizontal }
 
