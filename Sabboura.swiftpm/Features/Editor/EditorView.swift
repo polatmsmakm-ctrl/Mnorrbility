@@ -230,7 +230,7 @@ struct EditorView: View {
         Button {
             controller.flush()
             appState.userClosedNote()
-            dismiss()
+            if isPad { appState.path.removeAll() } else { dismiss() }
         } label: {
             Image(systemName: "arrow.left")
                 .font(.system(size: 18, weight: .semibold))

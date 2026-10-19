@@ -83,13 +83,6 @@ final class AppState: ObservableObject {
                 }
                 return
             }
-            // الآيباد: شاشة الكتابة بملء الشاشة، والقائمة الجانبية تعود عند الرجوع
-            if AppEnvironment.isPad && path.isEmpty != oldValue.isEmpty {
-                let target: NavigationSplitViewVisibility = path.isEmpty ? .all : .detailOnly
-                DispatchQueue.main.async {
-                    withAnimation(.easeInOut(duration: 0.25)) { self.columnVisibility = target }
-                }
-            }
         }
     }
     /// شاشة الكتابة تطلب إخفاء شريط الحالة (يُطبَّق من الجذر لأنه لا يعمل من داخل التنقّل)
@@ -192,6 +185,9 @@ struct RootView: View {
             .navigationSplitViewStyle(.balanced)
             // القائمة الجانبية تبقى على اليسار كما هو مطلوب، والمحتوى الداخلي بالعربية
             .environment(\.layoutDirection, .leftToRight)
+            .overlay {
+                if AppEnvironment.isPad { PadEditorLayer() }
+            }
             .overlay(alignment: .bottom) {
                 StudyTimerPill()
                     .padding(.bottom, 18)
@@ -277,9 +273,11 @@ struct DetailRootView: View {
     @EnvironmentObject private var appState: AppState
     @Environment(\.managedObjectContext) private var context
     @Environment(\.appTheme) private var theme
+    /// على الآيباد تُعرض المذكرة من الطبقة العليا، فلا ندفعها داخل هذا التنقّل أبداً
+    @State private var unusedPadPath: [CDNote] = []
 
     var body: some View {
-        NavigationStack(path: $appState.path) {
+        NavigationStack(path: AppEnvironment.isPad ? $unusedPadPath : $appState.path) {
             ZStack {
                 switch appState.selection {
                 case .home:
@@ -307,5 +305,27 @@ struct DetailRootView: View {
             }
         }
         .background(theme.background.ignoresSafeArea())
+    }
+}
+
+
+/// الآيباد: المذكرة المفتوحة تظهر فوق القائمة والمعرض بحركة تكبير ناعمة مع تلاشٍ (دخول وخروج).
+struct PadEditorLayer: View {
+    @EnvironmentObject private var appState: AppState
+    @Environment(\.appTheme) private var theme
+
+    var body: some View {
+        ZStack {
+            if let note = appState.path.last, note.isAlive {
+                EditorView(note: note)
+                    .id(note.objectID)
+                    .environment(\.layoutDirection, .rightToLeft)
+                    .background(theme.desk.ignoresSafeArea())
+                    .transition(.asymmetric(
+                        insertion: .opacity.combined(with: .scale(scale: 0.94)),
+                        removal: .opacity.combined(with: .scale(scale: 1.05))))
+            }
+        }
+        .animation(.spring(response: 0.42, dampingFraction: 0.9), value: appState.path.last?.objectID)
     }
 }
