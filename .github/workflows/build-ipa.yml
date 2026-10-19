@@ -50,6 +50,21 @@ jobs:
           fi
           echo "device build exit: $code"
 
+      - name: Publish IPA right away (before tests)
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd results
+          echo "$GITHUB_SHA" > source-sha.txt
+          echo "device=${{ steps.device.outputs.code }} sim=pending" > status.txt
+          git init -q -b builds
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add -A
+          git commit -qm "Early IPA of build ${{ github.run_number }} ($GITHUB_SHA)"
+          git push -qf "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}.git" builds
+          rm -rf .git
+
       - name: Build for simulator tests
         id: simbuild
         if: ${{ !contains(github.event.head_commit.message, '[skip tests]') }}
