@@ -391,9 +391,16 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
             canvas.contentInset = insets
         }
 
-        canvas.sendSubviewToBack(backgroundView)
-        canvas.insertSubview(itemsContentView, aboveSubview: backgroundView)
-        canvas.bringSubviewToFront(itemsOverlay)
+        // نعيد ترتيب الطبقات فقط إن اختل ترتيبها (هذه الدالة تُستدعى في كل إطار أثناء التكبير)
+        if canvas.subviews.first !== backgroundView {
+            canvas.sendSubviewToBack(backgroundView)
+        }
+        if canvas.subviews.dropFirst().first !== itemsContentView {
+            canvas.insertSubview(itemsContentView, aboveSubview: backgroundView)
+        }
+        if canvas.subviews.last !== itemsOverlay {
+            canvas.bringSubviewToFront(itemsOverlay)
+        }
     }
 
     private func reportVisiblePage() {
@@ -416,25 +423,25 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
 
     func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
         guard !isLoading else { return }
-        let count = canvas.drawing.strokes.count
-        let strokeAdded = count == lastStrokeCount + 1
-        lastStrokeCount = count
+        // لا نقرأ canvas.drawing هنا أبداً: قراءته نسخ كامل للرسم (تثقل مع الكتابة الكثيرة والممحاة)
+        // وقد تُلغي التحديد الجاري بأداة التحديد الحر.
         onDrawingChanged?()
         // الأشكال الذكية: خط جديد انتهى والقلم ثابت لحظة
-        if strokeAdded && smartShapes && !isReplacing && (appliedState?.tools.kind.isInk ?? false) {
+        if smartShapes && !isReplacing && (appliedState?.tools.kind.isInk ?? false) {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.04) { [weak self] in
-                self?.snapLastStrokeIfHeld(expectedCount: count)
+                self?.snapLastStrokeIfHeld()
             }
         }
     }
 
-    private func snapLastStrokeIfHeld(expectedCount: Int) {
+    private func snapLastStrokeIfHeld() {
+        // التثبيت لا يُستهلك إلا مرة واحدة، فلا يتأثر التراجع أو الخطوط التي بعده
         guard CACurrentMediaTime() - holdObserver.lastHoldEndTime < 0.9 else { return }
+        holdObserver.lastHoldEndTime = 0
         let drawing = canvas.drawing
-        guard drawing.strokes.count == expectedCount, let last = drawing.strokes.last,
+        guard let last = drawing.strokes.last,
               Date().timeIntervalSince(last.path.creationDate) < 30,
               let shape = ShapeRecognizer.snapped(last) else { return }
-        holdObserver.lastHoldEndTime = 0
         var strokes = drawing.strokes
         strokes[strokes.count - 1] = shape
         replaceDrawing(PKDrawing(strokes: strokes), actionName: "شكل مضبوط")
@@ -577,8 +584,10 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
     func tidyPage(_ pageIndex: Int) {
         guard let page = pages.first(where: { $0.index == pageIndex }) ?? pages.first else { return }
         let band = page.frame.insetBy(dx: -40, dy: -Self.pageGap / 2)
-        let selected = canvas.drawing.strokes.indices.filter {
-            let bounds = canvas.drawing.strokes[$0].renderBounds
+        // نقرأ الرسم مرة واحدة (القراءة نسخ كامل، وكانت تتكرر لكل خط)
+        let strokes = canvas.drawing.strokes
+        let selected = strokes.indices.filter {
+            let bounds = strokes[$0].renderBounds
             return band.contains(CGPoint(x: bounds.midX, y: bounds.midY))
         }
         applyTidy(to: selected)

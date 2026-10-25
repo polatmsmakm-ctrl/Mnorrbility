@@ -535,6 +535,7 @@ struct NoteThumbnail: View {
     @Environment(\.contentDark) private var contentDark
 
     @State private var image: UIImage? = nil
+    @State private var refreshTick = 0
 
     var body: some View {
         ZStack {
@@ -554,15 +555,20 @@ struct NoteThumbnail: View {
                 image = cached
                 return
             }
+            // المذكرة مفتوحة للكتابة الآن: نترك المصغّرة كما هي ونحدّثها عند الإغلاق
+            if image != nil && EditorActivity.isOpen(note.objectID) { return }
             ThumbnailCache.shared.render(note, dark: contentDark, theme: theme) { rendered in
                 image = rendered
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .sabbouraEditorClosed)) { _ in
+            refreshTick += 1
         }
     }
 
     private var renderKey: String {
         guard note.isAlive else { return "deleted" }
-        return "\(note.objectID.uriRepresentation().absoluteString)|\(note.updatedAt?.timeIntervalSince1970 ?? 0)|\(contentDark)|\(theme.rawValue)"
+        return "\(note.objectID.uriRepresentation().absoluteString)|\(note.updatedAt?.timeIntervalSince1970 ?? 0)|\(contentDark)|\(theme.rawValue)|\(refreshTick)"
     }
 }
 

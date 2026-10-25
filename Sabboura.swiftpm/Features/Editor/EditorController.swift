@@ -37,7 +37,11 @@ final class EditorController: ObservableObject {
     @Published private(set) var currentIndex: Int = 0
 
     @Published var tools: ToolSettings = ToolSettings.load() {
-        didSet { if tools != oldValue { tools.save() } }
+        didSet {
+            if tools != oldValue { tools.save() }
+            // انتهى التحديد الحر: نحفظ ما تغيّر أثناءه (الحفظ مؤجَّل طوال التحديد)
+            if oldValue.kind == .lasso, tools.kind != .lasso, isDirty { scheduleSave() }
+        }
     }
     @Published var fingerDrawing: Bool = FingerDrawingSetting.load() {
         didSet { if fingerDrawing != oldValue { FingerDrawingSetting.save(fingerDrawing) } }
@@ -85,6 +89,22 @@ final class EditorController: ObservableObject {
     private var savedSignatures: [UUID: Int] = [:]
     private var isDirty = false
     private var pendingSave: DispatchWorkItem?
+
+    // الحفظ التلقائي في الخلفية: تقسيم الحبر على الصفحات وترميزه ثقيل، فلا يجوز أن يجمّد القلم.
+    private struct SavedPage {
+        let index: Int
+        let signature: Int
+        let data: Data?
+    }
+    private struct BackgroundSaveResult {
+        let generation: Int
+        let ids: [UUID]
+        let pages: [SavedPage]
+    }
+    private let saveQueue = DispatchQueue(label: "sabboura.autosave", qos: .utility)
+    private let saveLock = NSLock()
+    private var pendingSaveResult: BackgroundSaveResult?
+    private var saveGeneration = 0
     private var toastWork: DispatchWorkItem?
     private var cancellables = Set<AnyCancellable>()
     private var didRunTestImport = false
@@ -118,6 +138,7 @@ final class EditorController: ObservableObject {
     /// يُستدعى بعد ظهور شاشة الكتابة: تجهيز الصفحة الأولى وتسجيل وقت الفتح.
     func didAppear() {
         guard note.isAlive else { return }
+        EditorActivity.setOpen(note.objectID, true)
         var needsRebuild = false
         if note.sortedPages.isEmpty {
             DataStore.insertPage(into: note, at: 0, template: PageTemplate.savedDefault, context: context)
@@ -201,6 +222,9 @@ final class EditorController: ObservableObject {
     /// يعيد بناء اللوحة كاملة (بعد إضافة/حذف/استيراد صفحات أو تغيير وضع العرض).
     func rebuildCanvas(scrollTo pageIndex: Int?) {
         guard let view = canvasView else { return }
+        // أي حفظ جارٍ في الخلفية يجب أن يصل قاعدة البيانات قبل قراءة الصفحات منها
+        settlePendingSave()
+        saveGeneration += 1
         let displayPages: [CDPage]
         if seamless {
             displayPages = pages
@@ -336,9 +360,84 @@ final class EditorController: ObservableObject {
 
     private func scheduleSave() {
         pendingSave?.cancel()
-        let work = DispatchWorkItem { [weak self] in self?.flush() }
+        let work = DispatchWorkItem { [weak self] in self?.autosave() }
         pendingSave = work
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8, execute: work)
+    }
+
+    /// الحفظ التلقائي أثناء الكتابة: يجري في الخلفية.
+    private func autosave() {
+        pendingSave = nil
+        guard note.isAlive, isDirty, let view = canvasView, !layout.isEmpty else { return }
+        // أثناء التحديد الحر لا نقرأ رسم اللوحة (القراءة قد تُلغي التحديد)؛ يُحفظ عند تغيير الأداة
+        guard tools.kind != .lasso else { return }
+
+        let drawing = view.currentDrawing
+        isDirty = false
+        let generation = saveGeneration
+        let ids = layout.map(\.id)
+        let origins = layout.map(\.originY)
+        let known = savedSignatures
+        let gap = PageCanvasContainerView.pageGap
+
+        saveQueue.async { [weak self] in
+            var buckets = Array(repeating: [PKStroke](), count: origins.count)
+            for stroke in drawing.strokes {
+                let midY = stroke.renderBounds.midY
+                var index = 0
+                for (i, originY) in origins.enumerated() where originY - gap / 2 <= midY {
+                    index = i
+                }
+                var moved = stroke
+                moved.transform = stroke.transform.concatenating(
+                    CGAffineTransform(translationX: 0, y: -origins[index]))
+                buckets[index].append(moved)
+            }
+            var pages: [SavedPage] = []
+            for index in origins.indices {
+                let pageDrawing = PKDrawing(strokes: buckets[index])
+                let signature = EditorController.signature(pageDrawing)
+                if known[ids[index]] != signature {
+                    pages.append(SavedPage(index: index,
+                                           signature: signature,
+                                           data: pageDrawing.strokes.isEmpty ? nil : pageDrawing.dataRepresentation()))
+                }
+            }
+            guard let self else { return }
+            self.saveLock.lock()
+            self.pendingSaveResult = BackgroundSaveResult(generation: generation, ids: ids, pages: pages)
+            self.saveLock.unlock()
+            DispatchQueue.main.async { [weak self] in self?.applyPendingSaveResult() }
+        }
+    }
+
+    /// يطبّق نتيجة الحفظ الذي جرى في الخلفية (على الخيط الرئيسي) إن لم يتجاوزها حفظ أحدث.
+    private func applyPendingSaveResult() {
+        saveLock.lock()
+        let result = pendingSaveResult
+        pendingSaveResult = nil
+        saveLock.unlock()
+        guard let result, result.generation == saveGeneration, note.isAlive else { return }
+        var changed = false
+        for saved in result.pages {
+            guard result.ids.indices.contains(saved.index),
+                  layout.indices.contains(saved.index),
+                  layoutPages.indices.contains(saved.index),
+                  layout[saved.index].id == result.ids[saved.index] else { continue }
+            let page = layoutPages[saved.index]
+            guard page.isAlive else { continue }
+            page.drawingData = saved.data
+            savedSignatures[result.ids[saved.index]] = saved.signature
+            changed = true
+        }
+        if changed { note.updatedAt = Date() }
+        DataStore.save(context)
+    }
+
+    /// ينتظر أي حفظ جارٍ في الخلفية ويطبّقه، قبل أي قراءة من قاعدة البيانات أو إعادة بناء.
+    private func settlePendingSave() {
+        saveQueue.sync { }
+        applyPendingSaveResult()
     }
 
     /// يكتب الرسم الحالي في قاعدة البيانات فوراً: كل خط يُنسب للصفحة التي يقع فيها.
@@ -346,7 +445,9 @@ final class EditorController: ObservableObject {
         pendingSave?.cancel()
         pendingSave = nil
         guard note.isAlive else { return }
+        settlePendingSave()
         if isDirty, let view = canvasView, !layout.isEmpty {
+            saveGeneration += 1
             var buckets = Array(repeating: [PKStroke](), count: layout.count)
             for stroke in view.currentDrawing.strokes {
                 let index = layoutIndex(forY: stroke.renderBounds.midY)
@@ -382,23 +483,43 @@ final class EditorController: ObservableObject {
         return best
     }
 
+    /// تقريب آمن للبصمة (لا ينهار مع القيم غير المنتهية، ويتجاهل فروق الفاصلة الصغيرة).
+    private static func quantized(_ value: CGFloat, _ factor: CGFloat) -> Int {
+        let scaled = (value * factor).rounded()
+        guard scaled.isFinite else { return 0 }
+        return Int(min(max(scaled, -1e9), 1e9))
+    }
+
     /// بصمة مختصرة للرسم لمعرفة الصفحات التي تغيّرت فعلاً.
     static func signature(_ drawing: PKDrawing) -> Int {
+        // بدون renderBounds (حسابه مكلف لكل خط): التحويل وأول/آخر نقطة يكفيان لاكتشاف التغيير
         var hasher = Hasher()
-        hasher.combine(drawing.strokes.count)
-        for stroke in drawing.strokes {
+        let strokes = drawing.strokes
+        hasher.combine(strokes.count)
+        for stroke in strokes {
             hasher.combine(stroke.path.creationDate.timeIntervalSinceReferenceDate)
             hasher.combine(stroke.path.count)
-            let bounds = stroke.renderBounds
-            hasher.combine(Int(bounds.minX * 4))
-            hasher.combine(Int(bounds.minY * 4))
-            hasher.combine(Int(bounds.maxX * 4))
-            hasher.combine(Int(bounds.maxY * 4))
+            let t = stroke.transform
+            hasher.combine(quantized(t.a, 1000))
+            hasher.combine(quantized(t.b, 1000))
+            hasher.combine(quantized(t.c, 1000))
+            hasher.combine(quantized(t.d, 1000))
+            hasher.combine(quantized(t.tx, 4))
+            hasher.combine(quantized(t.ty, 4))
+            let pointCount = stroke.path.count
+            if pointCount > 0 {
+                let first = stroke.path[0].location
+                let last = stroke.path[pointCount - 1].location
+                hasher.combine(quantized(first.x, 4))
+                hasher.combine(quantized(first.y, 4))
+                hasher.combine(quantized(last.x, 4))
+                hasher.combine(quantized(last.y, 4))
+            }
             hasher.combine(stroke.ink.inkType.rawValue)
             if let mask = stroke.mask {
                 let maskBounds = mask.bounds
-                hasher.combine(Int(maskBounds.width * 4))
-                hasher.combine(Int(maskBounds.height * 4))
+                hasher.combine(quantized(maskBounds.width, 4))
+                hasher.combine(quantized(maskBounds.height, 4))
             }
         }
         return hasher.finalize()

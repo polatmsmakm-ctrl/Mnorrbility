@@ -349,6 +349,28 @@ enum PageRenderer {
 
 // MARK: - الصور المصغّرة للمذكرات (بحسب الوضع الحالي فاتح/داكن)
 
+extension Notification.Name {
+    /// أُغلقت مذكرة في المحرر: المصغّرات تُحدَّث الآن.
+    static let sabbouraEditorClosed = Notification.Name("sabbouraEditorClosed")
+}
+
+/// المذكرات المفتوحة الآن في المحرر. قوائم المذكرات خلف المحرر لا تُعيد رسم مصغّراتها أثناء
+/// الكتابة (كان الحفظ التلقائي يغيّر وقت التحديث كل ثانية فتُرسم الصفحة من جديد بلا فائدة).
+enum EditorActivity {
+    private static var open: Set<NSManagedObjectID> = []
+
+    static func isOpen(_ id: NSManagedObjectID) -> Bool { open.contains(id) }
+
+    static func setOpen(_ id: NSManagedObjectID, _ value: Bool) {
+        if value {
+            open.insert(id)
+        } else {
+            open.remove(id)
+            NotificationCenter.default.post(name: .sabbouraEditorClosed, object: nil)
+        }
+    }
+}
+
 final class ThumbnailCache {
     static let shared = ThumbnailCache()
 
