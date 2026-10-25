@@ -14,6 +14,7 @@ struct HomeView: View {
     private var folders: FetchedResults<CDSubject>
 
     @State private var showPDFImporter = false
+    @State private var importErrorMessage: String? = nil
 
     private var recent: [CDNote] {
         Array(notes.filter(\.isAlive)
@@ -101,11 +102,24 @@ struct HomeView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(theme.background, for: .navigationBar)
         .fileImporter(isPresented: $showPDFImporter, allowedContentTypes: [.pdf], allowsMultipleSelection: false) { result in
-            guard let file = FileImportReader.read(result).first,
-                  let note = DataStore.createNote(fromPDF: file.data, fileName: file.name, in: nil, context: context) else { return }
+            let outcome = FileImportReader.readReporting(result)
+            guard let file = outcome.files.first else {
+                if let failure = outcome.failure { importErrorMessage = failure }
+                return
+            }
+            guard let note = DataStore.createNote(fromPDF: file.data, fileName: file.name, in: nil, context: context) else {
+                importErrorMessage = FileImportReader.invalidPDFMessage
+                return
+            }
             appState.select(.notes)
             appState.path.append(note)
             StudyService.shared.noteDidChange(note, delay: 2)
+        }
+        .alert("تعذّر استيراد الملف",
+               isPresented: Binding(get: { importErrorMessage != nil }, set: { if !$0 { importErrorMessage = nil } })) {
+            Button("حسناً", role: .cancel) { importErrorMessage = nil }
+        } message: {
+            Text(importErrorMessage ?? "")
         }
     }
 

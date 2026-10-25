@@ -44,6 +44,7 @@ struct NotesBrowserView: View {
     @State private var renameText = ""
     @State private var trashTarget: [CDNote] = []
     @State private var showPDFImporter = false
+    @State private var importErrorMessage: String? = nil
     @State private var folderSheet: SubjectSheetTarget? = nil
     @State private var confirmDeleteFolder = false
     @State private var studyNote: StudyTarget? = nil
@@ -131,6 +132,12 @@ struct NotesBrowserView: View {
         }
         .fileImporter(isPresented: $showPDFImporter, allowedContentTypes: [.pdf], allowsMultipleSelection: false) { result in
             importPDF(result)
+        }
+        .alert("تعذّر استيراد الملف",
+               isPresented: Binding(get: { importErrorMessage != nil }, set: { if !$0 { importErrorMessage = nil } })) {
+            Button("حسناً", role: .cancel) { importErrorMessage = nil }
+        } message: {
+            Text(importErrorMessage ?? "")
         }
         .alert("إعادة تسمية المذكرة",
                isPresented: Binding(get: { renameTarget != nil }, set: { if !$0 { renameTarget = nil } })) {
@@ -491,11 +498,17 @@ struct NotesBrowserView: View {
     }
 
     private func importPDF(_ result: Result<[URL], Error>) {
-        guard let file = FileImportReader.read(result).first else { return }
+        let outcome = FileImportReader.readReporting(result)
+        guard let file = outcome.files.first else {
+            if let failure = outcome.failure { importErrorMessage = failure }
+            return
+        }
         let target = folder?.isAlive == true ? folder : nil
         if let note = DataStore.createNote(fromPDF: file.data, fileName: file.name, in: target, context: context) {
             appState.path.append(note)
             StudyService.shared.noteDidChange(note, delay: 2)
+        } else {
+            importErrorMessage = FileImportReader.invalidPDFMessage
         }
     }
 
@@ -656,19 +669,52 @@ struct NoteRowView: View {
 
 /// قراءة الملفات المختارة من تطبيق الملفات مع صلاحيات الوصول الآمن.
 enum FileImportReader {
+    /// رسالة تُعرض للمستخدم عندما يفشل الاستيراد.
+    static let readFailureMessage = "تعذّرت قراءة الملف. إذا كان على iCloud فانتظر حتى يكتمل تنزيله ثم أعد المحاولة."
+    static let invalidPDFMessage = "هذا الملف ليس PDF صالحاً أو أنه محمي بكلمة مرور."
+
     static func read(_ result: Result<[URL], Error>) -> [ImportedFile] {
-        guard case .success(let urls) = result else { return [] }
+        readReporting(result).files
+    }
+
+    /// يقرأ الملفات المختارة ويعيد معها رسالة خطأ إن فشلت القراءة (بدل الفشل الصامت).
+    static func readReporting(_ result: Result<[URL], Error>) -> (files: [ImportedFile], failure: String?) {
+        let urls: [URL]
+        switch result {
+        case .success(let picked):
+            urls = picked
+        case .failure(let error):
+            return ([], error.localizedDescription)
+        }
         var files: [ImportedFile] = []
+        var failed = false
         for url in urls {
             let granted = url.startAccessingSecurityScopedResource()
             defer {
                 if granted { url.stopAccessingSecurityScopedResource() }
             }
-            guard let data = try? Data(contentsOf: url) else { continue }
+            guard let data = loadData(from: url) else {
+                failed = true
+                continue
+            }
             let type = UTType(filenameExtension: url.pathExtension) ?? .data
             files.append(ImportedFile(name: url.lastPathComponent, data: data, typeIdentifier: type.identifier))
         }
-        return files
+        return (files, failed && files.isEmpty ? readFailureMessage : nil)
+    }
+
+    /// قراءة منسّقة (NSFileCoordinator): تُنزّل ملفات iCloud غير المحمّلة قبل القراءة.
+    private static func loadData(from url: URL) -> Data? {
+        var result: Data?
+        var coordinationError: NSError?
+        let coordinator = NSFileCoordinator(filePresenter: nil)
+        coordinator.coordinate(readingItemAt: url, options: [], error: &coordinationError) { readURL in
+            result = try? Data(contentsOf: readURL)
+        }
+        if result == nil {
+            result = try? Data(contentsOf: url)
+        }
+        return result
     }
 }
 
