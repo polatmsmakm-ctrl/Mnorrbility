@@ -1,5 +1,6 @@
 import CoreData
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// الرئيسية: اختصارات سريعة، آخر الملاحظات، المفضلة، والمجلدات.
 struct HomeView: View {
@@ -13,7 +14,6 @@ struct HomeView: View {
     @FetchRequest(fetchRequest: CDSubject.sortedRequest(), animation: .default)
     private var folders: FetchedResults<CDSubject>
 
-    @State private var showPDFImporter = false
     @State private var importErrorMessage: String? = nil
 
     private var recent: [CDNote] {
@@ -101,7 +101,16 @@ struct HomeView: View {
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(theme.background, for: .navigationBar)
-        .fileImporter(isPresented: $showPDFImporter, allowedContentTypes: [.pdf], allowsMultipleSelection: false) { result in
+        .alert("تعذّر استيراد الملف",
+               isPresented: Binding(get: { importErrorMessage != nil }, set: { if !$0 { importErrorMessage = nil } })) {
+            Button("حسناً", role: .cancel) { importErrorMessage = nil }
+        } message: {
+            Text(importErrorMessage ?? "")
+        }
+    }
+
+    private func pickPDF() {
+        DocumentPicker.present(types: [.pdf]) { result in
             let outcome = FileImportReader.readReporting(result)
             guard let file = outcome.files.first else {
                 if let failure = outcome.failure { importErrorMessage = failure }
@@ -115,12 +124,6 @@ struct HomeView: View {
             appState.path.append(note)
             StudyService.shared.noteDidChange(note, delay: 2)
         }
-        .alert("تعذّر استيراد الملف",
-               isPresented: Binding(get: { importErrorMessage != nil }, set: { if !$0 { importErrorMessage = nil } })) {
-            Button("حسناً", role: .cancel) { importErrorMessage = nil }
-        } message: {
-            Text(importErrorMessage ?? "")
-        }
     }
 
     private var quickActions: some View {
@@ -132,7 +135,7 @@ struct HomeView: View {
                     appState.path.append(note)
                 }
                 actionTile("استيراد PDF", symbol: "doc.richtext", color: .orange, id: "home.importPDF") {
-                    showPDFImporter = true
+                    pickPDF()
                 }
                 actionTile("جلسة مذاكرة", symbol: "timer", color: .green, id: "home.study") {
                     appState.showStudySetup = true

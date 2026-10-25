@@ -43,7 +43,6 @@ struct NotesBrowserView: View {
     @State private var renameTarget: CDNote? = nil
     @State private var renameText = ""
     @State private var trashTarget: [CDNote] = []
-    @State private var showPDFImporter = false
     @State private var importErrorMessage: String? = nil
     @State private var folderSheet: SubjectSheetTarget? = nil
     @State private var confirmDeleteFolder = false
@@ -129,9 +128,6 @@ struct NotesBrowserView: View {
         .toolbar { toolbarContent }
         .safeAreaInset(edge: .bottom) {
             if isSelecting { selectionBar }
-        }
-        .fileImporter(isPresented: $showPDFImporter, allowedContentTypes: [.pdf], allowsMultipleSelection: false) { result in
-            importPDF(result)
         }
         .alert("تعذّر استيراد الملف",
                isPresented: Binding(get: { importErrorMessage != nil }, set: { if !$0 { importErrorMessage = nil } })) {
@@ -263,7 +259,7 @@ struct NotesBrowserView: View {
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("emptyNewNote")
                 Button {
-                    showPDFImporter = true
+                    pickPDF()
                 } label: {
                     Label("فتح ملف PDF", systemImage: "doc.richtext")
                         .font(.inter(size: 17, weight: .semibold))
@@ -355,7 +351,7 @@ struct NotesBrowserView: View {
                 Label("مذكرة جديدة", systemImage: "square.and.pencil")
             }
             Button {
-                showPDFImporter = true
+                pickPDF()
             } label: {
                 Label("استيراد PDF والكتابة عليه", systemImage: "doc.richtext")
             }
@@ -495,6 +491,15 @@ struct NotesBrowserView: View {
         let target = folder?.isAlive == true ? folder : nil
         let note = DataStore.createNote(in: target, title: DataStore.defaultNoteTitle(), context: context)
         appState.openAfterMenu(note)
+    }
+
+    /// يفتح منتقي الملفات بعد أن تُغلق القائمة، حتى لا تضيع نتيجة الاختيار.
+    private func pickPDF() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            DocumentPicker.present(types: [.pdf]) { result in
+                importPDF(result)
+            }
+        }
     }
 
     private func importPDF(_ result: Result<[URL], Error>) {
