@@ -86,6 +86,7 @@ final class EditorController: ObservableObject {
     private weak var canvasView: PageCanvasContainerView?
     private var layout: [PageRenderInfo] = []
     private var layoutPages: [CDPage] = []
+    private var touchPending = false
     private var savedSignatures: [UUID: Int] = [:]
     private var isDirty = false
     private var pendingSave: DispatchWorkItem?
@@ -430,7 +431,9 @@ final class EditorController: ObservableObject {
             savedSignatures[result.ids[saved.index]] = saved.signature
             changed = true
         }
-        if changed { note.updatedAt = Date() }
+        // وقت التعديل لا يُحدَّث أثناء الكتابة: تغييره يجعل قوائم المذكرات خلف المحرر تُعاد كل ثانية.
+        // يُحدَّث مرة واحدة عند الإغلاق أو التنقل (flush).
+        if changed { touchPending = true }
         DataStore.save(context)
     }
 
@@ -469,8 +472,12 @@ final class EditorController: ObservableObject {
                     changed = true
                 }
             }
-            if changed { note.updatedAt = Date() }
+            if changed { touchPending = true }
             isDirty = false
+        }
+        if touchPending {
+            touchPending = false
+            note.updatedAt = Date()
         }
         DataStore.save(context)
     }
