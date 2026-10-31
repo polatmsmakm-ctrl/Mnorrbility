@@ -1,0 +1,4 @@
+Query chain:
+ →Find: Target Application 'com.sabboura.notes'
+  ↪︎Find: Descendants matching type Button
+    ↪︎Find: Elements matching predicate '"startStudy" IN identifiers'

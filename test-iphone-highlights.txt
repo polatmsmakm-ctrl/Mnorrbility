@@ -1,0 +1,30 @@
+Test Case '-[SabbouraUITests.SabbouraUITests test1_FullFlow]' started.
+Test Case '-[SabbouraUITests.SabbouraUITests test1_FullFlow]' passed (349.004 seconds).
+Test Case '-[SabbouraUITests.SabbouraUITests test2_Themes]' started.
+Test Case '-[SabbouraUITests.SabbouraUITests test2_Themes]' passed (92.519 seconds).
+Test Case '-[SabbouraUITests.SabbouraUITests test3_PDFImport]' started.
+Test Case '-[SabbouraUITests.SabbouraUITests test3_PDFImport]' passed (101.490 seconds).
+Test Case '-[SabbouraUITests.SabbouraUITests test4_Persistence]' started.
+Test Case '-[SabbouraUITests.SabbouraUITests test4_Persistence]' passed (67.879 seconds).
+Test Case '-[SabbouraUITests.SabbouraUITests test5_HomeAndStudy]' started.
+/Users/runner/work/Mnorrbility/Mnorrbility/UITests/SabbouraUITests.swift:329: error: -[SabbouraUITests.SabbouraUITests test5_HomeAndStudy] : XCTAssertTrue failed - شاشة جلسات المذاكرة لم تظهر
+/Users/runner/work/Mnorrbility/Mnorrbility/UITests/SabbouraUITests.swift:624: error: -[SabbouraUITests.SabbouraUITests test5_HomeAndStudy] : failed - العنصر غير موجود: study 30
+/Users/runner/work/Mnorrbility/Mnorrbility/UITests/SabbouraUITests.swift:624: error: -[SabbouraUITests.SabbouraUITests test5_HomeAndStudy] : failed - العنصر غير موجود: rest 5
+/Users/runner/work/Mnorrbility/Mnorrbility/UITests/SabbouraUITests.swift:624: error: -[SabbouraUITests.SabbouraUITests test5_HomeAndStudy] : failed - العنصر غير موجود: total 2
+/Users/runner/work/Mnorrbility/Mnorrbility/UITests/SabbouraUITests.swift:624: error: -[SabbouraUITests.SabbouraUITests test5_HomeAndStudy] : failed - العنصر غير موجود: startStudy
+/Users/runner/work/Mnorrbility/Mnorrbility/UITests/SabbouraUITests.swift:336: error: -[SabbouraUITests.SabbouraUITests test5_HomeAndStudy] : XCTAssertTrue failed - مؤقت المذاكرة لم يظهر
+/Users/runner/work/Mnorrbility/Mnorrbility/UITests/SabbouraUITests.swift:624: error: -[SabbouraUITests.SabbouraUITests test5_HomeAndStudy] : failed - العنصر غير موجود: studyPause
+/Users/runner/work/Mnorrbility/Mnorrbility/UITests/SabbouraUITests.swift:624: error: -[SabbouraUITests.SabbouraUITests test5_HomeAndStudy] : failed - العنصر غير موجود: studyStop
+Test Case '-[SabbouraUITests.SabbouraUITests test5_HomeAndStudy]' failed (64.344 seconds).
+Test Case '-[SabbouraUITests.SabbouraUITests test6_SmartInk]' started.
+Test Case '-[SabbouraUITests.SabbouraUITests test6_SmartInk]' passed (78.695 seconds).
+Test Case '-[SabbouraUITests.SabbouraUITests test7_Images]' started.
+Test Case '-[SabbouraUITests.SabbouraUITests test7_Images]' passed (53.269 seconds).
+Test Case '-[SabbouraUITests.SabbouraUITests test8_Review]' started.
+Test Case '-[SabbouraUITests.SabbouraUITests test8_Review]' passed (137.541 seconds).
+Test Suite 'SabbouraUITests' failed at 2026-10-31 02:44:37.582.
+	 Executed 8 tests, with 8 failures (0 unexpected) in 944.741 (944.750) seconds
+Test Suite 'SabbouraUITests.xctest' failed at 2026-10-31 02:44:37.585.
+	 Executed 8 tests, with 8 failures (0 unexpected) in 944.741 (944.753) seconds
+Test Suite 'All tests' failed at 2026-10-31 02:44:37.585.
+	 Executed 8 tests, with 8 failures (0 unexpected) in 944.741 (944.754) seconds

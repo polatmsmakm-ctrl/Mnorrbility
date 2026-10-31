@@ -1,0 +1,57 @@
+Application, 0x1035750e0, pid: 96771, label: 'Mnorrbility' <App element pid: 96771>
+  Window (Main), 0x103574020, {{0.0, 0.0}, {402.0, 874.0}} <AX element pid: 96771, elementOrHash.elementID: 4351057776.3>
+    Other, 0x103576ce0, {{0.0, 0.0}, {402.0, 874.0}} <AX element pid: 96771, elementOrHash.elementID: 4370624736.4>
+      Other, 0x103576e00, {{0.0, 0.0}, {402.0, 874.0}} <AX element pid: 96771, elementOrHash.elementID: 4370627024.5>
+        Other, 0x103576b90, {{0.0, 0.0}, {402.0, 874.0}} <AX element pid: 96771, elementOrHash.elementID: 4351846064.6>
+          Other, 0x103574aa0, {{0.0, 0.0}, {402.0, 874.0}} <AX element pid: 96771, elementOrHash.elementID: 4351220688.7>
+            Other, 0x103576f20, {{0.0, 0.0}, {402.0, 874.0}} <AX element pid: 96771, elementOrHash.elementID: 4351108672.8>
+              Other, 0x103577040, {{0.0, 0.0}, {402.0, 874.0}} <AX element pid: 96771, elementOrHash.elementID: 4350950144.10>
+                Other, 0x103577160, {{0.0, 0.0}, {402.0, 874.0}} <AX element pid: 96771, elementOrHash.elementID: 4371187920.11>
+                  NavigationBar, 0x103577280, {{0.0, 56.3}, {402.0, 44.0}}, identifier: '_TtGC7SwiftUI32NavigationStackHosting' <AX element pid: 96771, elementOrHash.elementID: 4351102336.64>
+                    Button, 0x1035773a0, {{0.0, 56.3}, {112.3, 44.0}}, identifier: 'BackButton', label: 'Mnorrbility' <AX element pid: 96771, elementOrHash.elementID: 105553140848832.65>
+                  Other, 0x1035774c0, {{0.0, 0.0}, {402.0, 874.0}} <AX element pid: 96771, elementOrHash.elementID: 4371262336.12>
+                    Other, 0x1035775e0, {{0.0, 0.0}, {402.0, 874.0}} <AX element pid: 96771, elementOrHash.elementID: 4626616512.13>
+                      Other, 0x103577700, {{0.0, 0.0}, {402.0, 874.0}} <AX element pid: 96771, elementOrHash.elementID: 4351240144.66>
+                        Other, 0x103577820, {{0.0, 0.0}, {402.0, 874.0}} <AX element pid: 96771, elementOrHash.elementID: 4371222080.67>
+                          ScrollView, 0x103577940, {{0.0, 0.0}, {402.0, 874.0}} <AX element pid: 96771, elementOrHash.elementID: 4389624832.68>
+                            Other, 0x103577a60, {{0.0, 100.3}, {402.0, 512.7}} <AX element pid: 96771, elementOrHash.elementID: 4370938384.69>
+                              StaticText, 0x103577b80, {{280.3, 112.3}, {105.7, 36.3}}, label: 'الرئيسية' <AX element pid: 96771, elementOrHash.elementID: 4370623712.71>
+                              StaticText, 0x103577ca0, {{299.3, 152.7}, {86.7, 24.3}}, label: 'صباح الخير' <AX element pid: 96771, elementOrHash.elementID: 4371479360.72>
+                              ScrollView, 0x103577dc0, {{16.0, 205.0}, {370.0, 114.7}} <AX element pid: 96771, elementOrHash.elementID: 4389613568.73>
+                                Other, 0x103577ee0, {{16.0, 205.0}, {634.0, 114.7}} <AX element pid: 96771, elementOrHash.elementID: 4371390336.77>
+                                  Button, 0x103578000, {{447.5, 204.5}, {203.0, 115.7}}, identifier: 'home.newNote', label: 'مذكرة جديدة' <AX element pid: 96771, elementOrHash.elementID: 4626406720.83>
+                                    Image, 0x103578120, {{599.0, 232.3}, {26.0, 25.7}}, identifier: 'square.and.pencil', label: 'Compose' <AX element pid: 96771, elementOrHash.elementID: 4371153712.101>
+                                    StaticText, 0x103578240, {{542.0, 283.0}, {92.0, 20.7}}, label: 'مذكرة جديدة' <AX element pid: 96771, elementOrHash.elementID: 4626658560.102>
+                                  Button, 0x103578360, {{231.5, 204.5}, {203.0, 115.7}}, identifier: 'home.importPDF', label: 'استيراد PDF' <AX element pid: 96771, elementOrHash.elementID: 4371204352.84>
+                                    Image, 0x1035785d0, {{383.7, 232.3}, {20.7, 25.7}}, identifier: 'doc.richtext', label: 'Rich Text Document' <AX element pid: 96771, elementOrHash.elementID: 4370936992.103>
+                                    StaticText, 0x1035786f0, {{330.7, 283.0}, {87.3, 20.7}}, label: 'استيراد PDF' <AX element pid: 96771, elementOrHash.elementID: 4371378928.104>
+                                  Button, 0x103578810, {{15.5, 204.5}, {203.0, 115.7}}, identifier: 'home.study', label: 'جلسة مذاكرة' <AX element pid: 96771, elementOrHash.elementID: 4371449488.85>
+                                    Image, 0x103578930, {{165.7, 232.7}, {24.7, 24.7}}, identifier: 'timer', label: 'Timer' <AX element pid: 96771, elementOrHash.elementID: 4370859520.105>
+                                    StaticText, 0x103578a50, {{109.7, 283.0}, {92.3, 20.7}}, label: 'جلسة مذاكرة' <AX element pid: 96771, elementOrHash.elementID: 4371415856.106>
+                              StaticText, 0x103578b70, {{302.7, 347.7}, {83.3, 24.3}}, label: 'المجلدات' <AX element pid: 96771, elementOrHash.elementID: 4370655712.74>
+                              Other, 0x103578c90, {{15.5, 383.5}, {371.0, 218.0}} <AX element pid: 96771, elementOrHash.elementID: 4371080704.75>
+                                Button, 0x103578db0, {{207.5, 383.5}, {179.0, 64.0}}, label: 'الرياضيات, 0 ملاحظة' <AX element pid: 96771, elementOrHash.elementID: 4626641600.78>
+                                  Image, 0x103578ed0, {{351.0, 407.7}, {19.0, 15.3}}, identifier: 'folder.fill', label: 'Move' <AX element pid: 96771, elementOrHash.elementID: 4626336528.86>
+                                  StaticText, 0x103578ff0, {{277.0, 398.0}, {62.0, 18.3}}, label: 'الرياضيات' <AX element pid: 96771, elementOrHash.elementID: 4371368384.87>
+                                  StaticText, 0x103579110, {{292.3, 418.3}, {46.7, 14.7}}, label: '0 ملاحظة' <AX element pid: 96771, elementOrHash.elementID: 4626348496.88>
+                                Button, 0x103579230, {{15.5, 383.5}, {179.0, 64.0}}, label: 'الفيزياء, 0 ملاحظة' <AX element pid: 96771, elementOrHash.elementID: 4371485968.79>
+                                  Image, 0x103579350, {{159.0, 407.7}, {19.0, 15.3}}, identifier: 'folder.fill', label: 'Move' <AX element pid: 96771, elementOrHash.elementID: 4371158592.89>
+                                  StaticText, 0x103579470, {{102.3, 398.0}, {44.7, 18.3}}, label: 'الفيزياء' <AX element pid: 96771, elementOrHash.elementID: 4371485536.90>
+                                  StaticText, 0x103579590, {{100.3, 418.3}, {46.7, 14.7}}, label: '0 ملاحظة' <AX element pid: 96771, elementOrHash.elementID: 4370948848.91>
+                                Button, 0x1035796b0, {{207.5, 460.5}, {179.0, 64.0}}, label: 'الكيمياء, 0 ملاحظة' <AX element pid: 96771, elementOrHash.elementID: 4371334896.80>
+                                  Image, 0x1035797d0, {{351.0, 485.0}, {19.0, 15.3}}, identifier: 'folder.fill', label: 'Move' <AX element pid: 96771, elementOrHash.elementID: 4371333680.92>
+                                  StaticText, 0x1035798f0, {{291.0, 475.0}, {48.0, 18.3}}, label: 'الكيمياء' <AX element pid: 96771, elementOrHash.elementID: 4371334464.93>
+                                  StaticText, 0x103579a10, {{292.3, 495.3}, {46.7, 14.7}}, label: '0 ملاحظة' <AX element pid: 96771, elementOrHash.elementID: 4371320720.94>
+                                Button, 0x103579b30, {{15.5, 460.5}, {179.0, 64.0}}, label: 'اللغة العربية, 0 ملاحظة' <AX element pid: 96771, elementOrHash.elementID: 4370851136.81>
+                                  Image, 0x103579c50, {{159.0, 485.0}, {19.0, 15.3}}, identifier: 'folder.fill', label: 'Move' <AX element pid: 96771, elementOrHash.elementID: 4371424560.95>
+                                  StaticText, 0x103579d70, {{71.3, 475.0}, {75.7, 18.3}}, label: 'اللغة العربية' <AX element pid: 96771, elementOrHash.elementID: 4371424992.96>
+                                  StaticText, 0x103579e90, {{100.3, 495.3}, {46.7, 14.7}}, label: '0 ملاحظة' <AX element pid: 96771, elementOrHash.elementID: 4371425776.97>
+                                Button, 0x103579fb0, {{207.5, 537.5}, {179.0, 64.0}}, label: 'ملاحظات سريعة, 0 ملاحظة' <AX element pid: 96771, elementOrHash.elementID: 4370744848.82>
+                                  Image, 0x10357a0d0, {{351.0, 562.0}, {19.0, 15.3}}, identifier: 'folder.fill', label: 'Move' <AX element pid: 96771, elementOrHash.elementID: 4371491136.98>
+                                  StaticText, 0x10357a1f0, {{237.7, 552.0}, {101.3, 18.3}}, label: 'ملاحظات سريعة' <AX element pid: 96771, elementOrHash.elementID: 4371436032.99>
+                                  StaticText, 0x10357a310, {{292.3, 572.3}, {46.7, 14.7}}, label: '0 ملاحظة' <AX element pid: 96771, elementOrHash.elementID: 4371436464.100>
+                            Other, 0x10357a430, {{-24.0, 100.3}, {30.0, 721.0}}, label: 'Vertical scroll bar, 1 page', value: 0% <AX element pid: 96771, elementOrHash.elementID: 4371353648.70>
+                              Other, 0x10357a550, {{3.0, 330.3}, {3.0, 488.0}} <AX element pid: 96771, elementOrHash.elementID: 4371411136.76>
+                            Other, 0x10357a670, {{-24.0, 100.3}, {30.0, 721.0}}, label: 'Vertical scroll bar, 1 page', value: 0% <AX element pid: 96771, elementOrHash.elementID: 4371353648.70>
+                              Other, 0x10357a790, {{3.0, 330.3}, {3.0, 488.0}} <AX element pid: 96771, elementOrHash.elementID: 4371411136.76>
+            StaticText, 0x10357a8b0, {{0.5, 836.7}, {3.0, 2.7}}, identifier: 'debugLog', label: 'sel=home' <AX element pid: 96771, elementOrHash.elementID: 4351220256.9>

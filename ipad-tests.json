@@ -1,0 +1,148 @@
+{
+  "devices" : [
+    {
+      "architecture" : "arm64",
+      "deviceId" : "6F2DF744-A04D-42AA-AF1A-94B47978B0DF",
+      "deviceName" : "iPad Pro 13-inch (M5)",
+      "modelName" : "iPad Pro 13-inch (M5)",
+      "osBuildNumber" : "23C54",
+      "osVersion" : "26.2",
+      "platform" : "iOS Simulator"
+    }
+  ],
+  "testNodes" : [
+    {
+      "children" : [
+        {
+          "children" : [
+            {
+              "children" : [
+                {
+                  "children" : [
+                    {
+                      "name" : "SabbouraUITests.swift:624: failed - العنصر غير موجود: favorite",
+                      "nodeType" : "Failure Message",
+                      "result" : "Failed"
+                    },
+                    {
+                      "name" : "SabbouraUITests.swift:624: failed - العنصر غير موجود: duplicate",
+                      "nodeType" : "Failure Message",
+                      "result" : "Failed"
+                    },
+                    {
+                      "name" : "SabbouraUITests.swift:151: XCTAssertEqual failed: (\"1\") is not equal to (\"2\") - التكرار لم ينجح",
+                      "nodeType" : "Failure Message",
+                      "result" : "Failed"
+                    },
+                    {
+                      "name" : "SabbouraUITests.swift:624: failed - العنصر غير موجود: delete from context menu",
+                      "nodeType" : "Failure Message",
+                      "result" : "Failed"
+                    },
+                    {
+                      "name" : "SabbouraUITests.swift:624: failed - العنصر غير موجود: confirm delete",
+                      "nodeType" : "Failure Message",
+                      "result" : "Failed"
+                    },
+                    {
+                      "name" : "SabbouraUITests.swift:175: failed - المذكرة المحذوفة غير موجودة في السلة",
+                      "nodeType" : "Failure Message",
+                      "result" : "Failed"
+                    }
+                  ],
+                  "duration" : "7m 36s",
+                  "durationInSeconds" : 456.19905400276184,
+                  "name" : "test1_FullFlow()",
+                  "nodeIdentifier" : "SabbouraUITests/test1_FullFlow()",
+                  "nodeIdentifierURL" : "test://com.apple.xcode/Sabboura/SabbouraUITests/SabbouraUITests/test1_FullFlow",
+                  "nodeType" : "Test Case",
+                  "result" : "Failed"
+                },
+                {
+                  "duration" : "1m 43s",
+                  "durationInSeconds" : 103.7875839471817,
+                  "name" : "test2_Themes()",
+                  "nodeIdentifier" : "SabbouraUITests/test2_Themes()",
+                  "nodeIdentifierURL" : "test://com.apple.xcode/Sabboura/SabbouraUITests/SabbouraUITests/test2_Themes",
+                  "nodeType" : "Test Case",
+                  "result" : "Passed"
+                },
+                {
+                  "duration" : "2m 2s",
+                  "durationInSeconds" : 122.49766790866852,
+                  "name" : "test3_PDFImport()",
+                  "nodeIdentifier" : "SabbouraUITests/test3_PDFImport()",
+                  "nodeIdentifierURL" : "test://com.apple.xcode/Sabboura/SabbouraUITests/SabbouraUITests/test3_PDFImport",
+                  "nodeType" : "Test Case",
+                  "result" : "Passed"
+                },
+                {
+                  "duration" : "1m 27s",
+                  "durationInSeconds" : 87.24957597255707,
+                  "name" : "test4_Persistence()",
+                  "nodeIdentifier" : "SabbouraUITests/test4_Persistence()",
+                  "nodeIdentifierURL" : "test://com.apple.xcode/Sabboura/SabbouraUITests/SabbouraUITests/test4_Persistence",
+                  "nodeType" : "Test Case",
+                  "result" : "Passed"
+                },
+                {
+                  "duration" : "31s",
+                  "durationInSeconds" : 31.58135199546814,
+                  "name" : "test5_HomeAndStudy()",
+                  "nodeIdentifier" : "SabbouraUITests/test5_HomeAndStudy()",
+                  "nodeIdentifierURL" : "test://com.apple.xcode/Sabboura/SabbouraUITests/SabbouraUITests/test5_HomeAndStudy",
+                  "nodeType" : "Test Case",
+                  "result" : "Passed"
+                },
+                {
+                  "duration" : "1m 45s",
+                  "durationInSeconds" : 105.91476595401764,
+                  "name" : "test6_SmartInk()",
+                  "nodeIdentifier" : "SabbouraUITests/test6_SmartInk()",
+                  "nodeIdentifierURL" : "test://com.apple.xcode/Sabboura/SabbouraUITests/SabbouraUITests/test6_SmartInk",
+                  "nodeType" : "Test Case",
+                  "result" : "Passed"
+                },
+                {
+                  "duration" : "58s",
+                  "durationInSeconds" : 58.522961020469666,
+                  "name" : "test7_Images()",
+                  "nodeIdentifier" : "SabbouraUITests/test7_Images()",
+                  "nodeIdentifierURL" : "test://com.apple.xcode/Sabboura/SabbouraUITests/SabbouraUITests/test7_Images",
+                  "nodeType" : "Test Case",
+                  "result" : "Passed"
+                },
+                {
+                  "duration" : "2m 20s",
+                  "durationInSeconds" : 140.25874197483063,
+                  "name" : "test8_Review()",
+                  "nodeIdentifier" : "SabbouraUITests/test8_Review()",
+                  "nodeIdentifierURL" : "test://com.apple.xcode/Sabboura/SabbouraUITests/SabbouraUITests/test8_Review",
+                  "nodeType" : "Test Case",
+                  "result" : "Passed"
+                }
+              ],
+              "name" : "SabbouraUITests",
+              "nodeIdentifierURL" : "test://com.apple.xcode/Sabboura/SabbouraUITests/SabbouraUITests",
+              "nodeType" : "Test Suite",
+              "result" : "Failed"
+            }
+          ],
+          "name" : "SabbouraUITests",
+          "nodeIdentifierURL" : "test://com.apple.xcode/Sabboura/SabbouraUITests",
+          "nodeType" : "UI test bundle",
+          "result" : "Failed"
+        }
+      ],
+      "name" : "Sabboura",
+      "nodeType" : "Test Plan",
+      "result" : "Failed"
+    }
+  ],
+  "testPlanConfigurations" : [
+    {
+      "configurationId" : "1",
+      "configurationName" : "Test Scheme Action"
+    }
+  ]
+}

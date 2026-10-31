@@ -1,0 +1,4 @@
+Query chain:
+ →Find: Target Application 'com.sabboura.notes'
+  ↪︎Find: Descendants matching type Any
+    ↪︎Find: Elements matching predicate '"studyPill" IN identifiers'

@@ -1,0 +1,28 @@
+Test Case '-[SabbouraUITests.SabbouraUITests test1_FullFlow]' started.
+/Users/runner/work/Mnorrbility/Mnorrbility/UITests/SabbouraUITests.swift:624: error: -[SabbouraUITests.SabbouraUITests test1_FullFlow] : failed - العنصر غير موجود: favorite
+/Users/runner/work/Mnorrbility/Mnorrbility/UITests/SabbouraUITests.swift:624: error: -[SabbouraUITests.SabbouraUITests test1_FullFlow] : failed - العنصر غير موجود: duplicate
+/Users/runner/work/Mnorrbility/Mnorrbility/UITests/SabbouraUITests.swift:151: error: -[SabbouraUITests.SabbouraUITests test1_FullFlow] : XCTAssertEqual failed: ("1") is not equal to ("2") - التكرار لم ينجح
+/Users/runner/work/Mnorrbility/Mnorrbility/UITests/SabbouraUITests.swift:624: error: -[SabbouraUITests.SabbouraUITests test1_FullFlow] : failed - العنصر غير موجود: delete from context menu
+/Users/runner/work/Mnorrbility/Mnorrbility/UITests/SabbouraUITests.swift:624: error: -[SabbouraUITests.SabbouraUITests test1_FullFlow] : failed - العنصر غير موجود: confirm delete
+/Users/runner/work/Mnorrbility/Mnorrbility/UITests/SabbouraUITests.swift:175: error: -[SabbouraUITests.SabbouraUITests test1_FullFlow] : failed - المذكرة المحذوفة غير موجودة في السلة
+Test Case '-[SabbouraUITests.SabbouraUITests test1_FullFlow]' failed (456.199 seconds).
+Test Case '-[SabbouraUITests.SabbouraUITests test2_Themes]' started.
+Test Case '-[SabbouraUITests.SabbouraUITests test2_Themes]' passed (103.788 seconds).
+Test Case '-[SabbouraUITests.SabbouraUITests test3_PDFImport]' started.
+Test Case '-[SabbouraUITests.SabbouraUITests test3_PDFImport]' passed (122.498 seconds).
+Test Case '-[SabbouraUITests.SabbouraUITests test4_Persistence]' started.
+Test Case '-[SabbouraUITests.SabbouraUITests test4_Persistence]' passed (87.250 seconds).
+Test Case '-[SabbouraUITests.SabbouraUITests test5_HomeAndStudy]' started.
+Test Case '-[SabbouraUITests.SabbouraUITests test5_HomeAndStudy]' passed (31.581 seconds).
+Test Case '-[SabbouraUITests.SabbouraUITests test6_SmartInk]' started.
+Test Case '-[SabbouraUITests.SabbouraUITests test6_SmartInk]' passed (105.915 seconds).
+Test Case '-[SabbouraUITests.SabbouraUITests test7_Images]' started.
+Test Case '-[SabbouraUITests.SabbouraUITests test7_Images]' passed (58.523 seconds).
+Test Case '-[SabbouraUITests.SabbouraUITests test8_Review]' started.
+Test Case '-[SabbouraUITests.SabbouraUITests test8_Review]' passed (140.259 seconds).
+Test Suite 'SabbouraUITests' failed at 2026-10-31 02:25:31.372.
+	 Executed 8 tests, with 6 failures (0 unexpected) in 1106.012 (1106.024) seconds
+Test Suite 'SabbouraUITests.xctest' failed at 2026-10-31 02:25:31.373.
+	 Executed 8 tests, with 6 failures (0 unexpected) in 1106.012 (1106.025) seconds
+Test Suite 'All tests' failed at 2026-10-31 02:25:31.373.
+	 Executed 8 tests, with 6 failures (0 unexpected) in 1106.012 (1106.028) seconds
