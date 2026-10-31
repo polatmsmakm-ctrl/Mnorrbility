@@ -316,7 +316,7 @@ struct EditorView: View {
                 Button {
                     controller.shareAttachments(note.sortedAttachments)
                 } label: {
-                    Label("الملفات المرفقة والتسجيلات", systemImage: "paperclip")
+                    Label("الملفات الأصلية والتسجيلات (بدون كتابتك)", systemImage: "paperclip")
                 }
             }
         } label: {

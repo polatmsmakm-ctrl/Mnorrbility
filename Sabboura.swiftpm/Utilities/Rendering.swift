@@ -276,9 +276,12 @@ struct PageSnapshot {
     let drawingData: Data?
     var items: [PageItem] = []
     var images: [UUID: UIImage] = [:]
+    /// صورة حبر جاهزة (تُرسم على الخيط الرئيسي قبل التصدير) تُستعمل بدل إعادة الرسم في الخلفية.
+    var prerenderedInk: UIImage?
 
     /// صورة الحبر فقط بخلفية شفافة. في الوضع الداكن يحوّل PencilKit ألوان الحبر تلقائياً.
     func drawingImage(scale: CGFloat) -> UIImage? {
+        if let prerenderedInk { return prerenderedInk }
         guard let drawingData, !drawingData.isEmpty,
               let drawing = try? PKDrawing(data: drawingData),
               !drawing.strokes.isEmpty else { return nil }

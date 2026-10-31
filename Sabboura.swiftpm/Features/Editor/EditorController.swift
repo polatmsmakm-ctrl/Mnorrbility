@@ -1090,10 +1090,36 @@ final class EditorController: ObservableObject {
 
     // MARK: - التصدير
 
+    /// لقطات للتصدير تعتمد على ما هو مكتوب فعلاً على اللوحة الآن (لا على آخر حفظ في قاعدة البيانات)،
+    /// وصورة الحبر تُرسم هنا على الخيط الرئيسي ليظهر الخط دائماً في الملف.
+    private func exportSnapshots(_ list: [CDPage]) -> [PageSnapshot] {
+        var live: [NSManagedObjectID: Data] = [:]
+        if let view = canvasView, !layout.isEmpty, layout.count == layoutPages.count {
+            var buckets = Array(repeating: [PKStroke](), count: layout.count)
+            for stroke in view.currentDrawing.strokes {
+                let index = layoutIndex(forY: stroke.renderBounds.midY)
+                var moved = stroke
+                moved.transform = stroke.transform.concatenating(
+                    CGAffineTransform(translationX: 0, y: -layout[index].originY))
+                buckets[index].append(moved)
+            }
+            for (index, page) in layoutPages.enumerated() where page.isAlive {
+                live[page.objectID] = PKDrawing(strokes: buckets[index]).dataRepresentation()
+            }
+        }
+        let alive = list.filter(\.isAlive)
+        return alive.map { page in
+            var snap = PageSnapshot.make(for: page, context: context, dark: false, theme: theme,
+                                         drawingData: live[page.objectID])
+            if alive.count <= 4 { snap.prerenderedInk = snap.drawingImage(scale: 2) }
+            return snap
+        }
+    }
+
     func exportNoteAsPDF() {
         guard note.isAlive else { return }
         flush()
-        let snapshots = pages.filter(\.isAlive).map { self.snapshot(of: $0) }
+        let snapshots = exportSnapshots(pages)
         let title = note.displayTitle
         let url = TemporaryFiles.directory("Export").appending(path: TemporaryFiles.safeFileName(title) + ".pdf")
         runExport {
@@ -1105,7 +1131,7 @@ final class EditorController: ObservableObject {
     func exportCurrentPageAsImage() {
         guard let page = currentPage else { return }
         flush()
-        let pageSnapshot = self.snapshot(of: page)
+        guard let pageSnapshot = exportSnapshots([page]).first else { return }
         let name = TemporaryFiles.safeFileName(note.displayTitle) + " - صفحة \(currentIndex + 1).png"
         let url = TemporaryFiles.directory("Export").appending(path: name)
         runExport {
@@ -1119,7 +1145,7 @@ final class EditorController: ObservableObject {
     func exportCurrentPageAsPDF() {
         guard let page = currentPage else { return }
         flush()
-        let pageSnapshot = self.snapshot(of: page)
+        guard let pageSnapshot = exportSnapshots([page]).first else { return }
         let name = TemporaryFiles.safeFileName(note.displayTitle) + " - صفحة \(currentIndex + 1).pdf"
         let url = TemporaryFiles.directory("Export").appending(path: name)
         let title = note.displayTitle
