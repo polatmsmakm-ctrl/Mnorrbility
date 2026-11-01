@@ -101,6 +101,8 @@ final class EditorController: ObservableObject {
         let generation: Int
         let ids: [UUID]
         let pages: [SavedPage]
+        /// أسفل نقطة وصل لها الحبر في آخر صفحة معروضة (نسبةً لأعلى الصفحة)
+        let lastBottom: CGFloat
     }
     private let saveQueue = DispatchQueue(label: "sabboura.autosave", qos: .utility)
     private let saveLock = NSLock()
@@ -383,8 +385,10 @@ final class EditorController: ObservableObject {
 
         saveQueue.async { [weak self] in
             var buckets = Array(repeating: [PKStroke](), count: origins.count)
+            var lastBottom: CGFloat = 0
             for stroke in drawing.strokes {
-                let midY = stroke.renderBounds.midY
+                let bounds = stroke.renderBounds
+                let midY = bounds.midY
                 var index = 0
                 for (i, originY) in origins.enumerated() where originY - gap / 2 <= midY {
                     index = i
@@ -393,6 +397,9 @@ final class EditorController: ObservableObject {
                 moved.transform = stroke.transform.concatenating(
                     CGAffineTransform(translationX: 0, y: -origins[index]))
                 buckets[index].append(moved)
+                if index == origins.count - 1 {
+                    lastBottom = max(lastBottom, bounds.maxY - origins[index])
+                }
             }
             var pages: [SavedPage] = []
             for index in origins.indices {
@@ -406,7 +413,7 @@ final class EditorController: ObservableObject {
             }
             guard let self else { return }
             self.saveLock.lock()
-            self.pendingSaveResult = BackgroundSaveResult(generation: generation, ids: ids, pages: pages)
+            self.pendingSaveResult = BackgroundSaveResult(generation: generation, ids: ids, pages: pages, lastBottom: lastBottom)
             self.saveLock.unlock()
             DispatchQueue.main.async { [weak self] in self?.applyPendingSaveResult() }
         }
@@ -435,6 +442,28 @@ final class EditorController: ObservableObject {
         // يُحدَّث مرة واحدة عند الإغلاق أو التنقل (flush).
         if changed { touchPending = true }
         DataStore.save(context)
+        extendNoteIfNeeded(lastBottom: result.lastBottom)
+    }
+
+    /// الكتابة وصلت أسفل آخر صفحة: تُضاف صفحة جديدة تلقائياً (بدون إعادة بناء اللوحة أو فقدان التراجع).
+    private func extendNoteIfNeeded(lastBottom: CGFloat) {
+        guard note.isAlive, let view = canvasView, let lastInfo = layout.last,
+              let shown = layoutPages.last, shown.isAlive, shown == pages.last,
+              lastBottom > lastInfo.size.height * 0.85 else { return }
+        let template = shown.isPDFPage ? PageTemplate.savedDefault : shown.template
+        let size = shown.isPDFPage ? DataStore.standardPageSize : shown.pageSize
+        DataStore.insertPage(into: note, at: pages.count, template: template, size: size, context: context)
+        DataStore.save(context)
+        reloadPages()
+        guard let created = pages.last, seamless else {
+            showToast("أُضيفت صفحة جديدة تلقائياً")
+            return
+        }
+        layoutPages.append(created)
+        layout = buildLayout(for: layoutPages)
+        if let info = layout.last { savedSignatures[info.id] = Self.signature(PKDrawing()) }
+        view.extendPages(layout, deskColor: UIColor(hex: theme.deskHex), dark: contentDark)
+        showToast("أُضيفت صفحة جديدة تلقائياً")
     }
 
     /// ينتظر أي حفظ جارٍ في الخلفية ويطبّقه، قبل أي قراءة من قاعدة البيانات أو إعادة بناء.

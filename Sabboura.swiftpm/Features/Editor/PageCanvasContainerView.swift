@@ -167,6 +167,15 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
         backgroundView.configure(pages: pages, deskColor: deskColor)
     }
 
+    /// يضيف صفحات في آخر اللوحة دون المساس بالرسم أو التكبير أو مكان التمرير.
+    func extendPages(_ newPages: [PageRenderInfo], deskColor: UIColor, dark: Bool) {
+        pages = newPages
+        contentExtent = Self.extent(of: newPages)
+        backgroundView.configure(pages: newPages, deskColor: deskColor)
+        syncGeometry()
+        itemsOverlay.setNeedsLayout()
+    }
+
     private static func extent(of pages: [PageRenderInfo]) -> CGSize {
         guard let last = pages.last else { return DataStore.standardPageSize }
         let width = pages.map(\.size.width).max() ?? DataStore.standardPageSize.width
