@@ -105,3 +105,12 @@ final class SelectionMenuBar: UIView {
         return systemLayoutSizeFitting(UIView.layoutFittingCompressedSize)
     }
 }
+
+/// مفوّض بسيط يقرّر هل يبدأ تعرّف الحركة (يمنع تعارض أسماء الدوال مع UIView نفسها).
+final class ClosureGestureDelegate: NSObject, UIGestureRecognizerDelegate {
+    var shouldBegin: ((UIGestureRecognizer) -> Bool)?
+
+    func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        shouldBegin?(gestureRecognizer) ?? true
+    }
+}

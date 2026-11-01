@@ -8,7 +8,7 @@ import UniformTypeIdentifiers
 /// - الحبر يُرسم بمحرك PencilKit الرسمي (الضغط والميلان والتنبؤ بحركة القلم).
 /// - الخلفية طبقة مقسّمة أسفل الحبر، وطبقة النصوص والصور فوقه، وكلها تتكبّر مع اللوحة.
 /// - الوضع الداكن: PencilKit يحوّل ألوان الحبر تلقائياً (الأسود يظهر أبيض).
-final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInteractionDelegate, UIGestureRecognizerDelegate {
+final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInteractionDelegate {
     let canvas = PKCanvasView()
     let itemsOverlay = ItemsOverlayView(frame: .zero)
     /// الصور والنصوص تُعرض هنا (فوق الخلفية وتحت الحبر) حتى تكتب فوقها بالقلم
@@ -68,6 +68,7 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
     }
     private var selection: FloatingSelection?
     private let selectionPan = UIPanGestureRecognizer()
+    private let panDelegate = ClosureGestureDelegate()
     private let selectionView = StrokeSelectionView()
     private let selectionBar = SelectionMenuBar()
     private var pastePoint: CGPoint?
@@ -131,7 +132,8 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
         canvas.addGestureRecognizer(holdObserver)
 
         selectionPan.addTarget(self, action: #selector(handleSelectionPan(_:)))
-        selectionPan.delegate = self
+        panDelegate.shouldBegin = { [weak self] gesture in self?.selectionPanShouldBegin(gesture) ?? false }
+        selectionPan.delegate = panDelegate
         selectionPan.isEnabled = false
         selectionPan.maximumNumberOfTouches = 1
         selectionPan.allowedTouchTypes = [NSNumber(value: UITouch.TouchType.direct.rawValue),
@@ -885,8 +887,7 @@ extension PageCanvasContainerView {
         }
     }
 
-    func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-        guard gestureRecognizer === selectionPan else { return true }
+    fileprivate func selectionPanShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
         let location = gestureRecognizer.location(in: canvas)
         let translation = selectionPan.translation(in: canvas)
         return isInsideSelection(CGPoint(x: location.x - translation.x, y: location.y - translation.y))
