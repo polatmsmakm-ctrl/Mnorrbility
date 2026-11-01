@@ -7,7 +7,7 @@ struct SettingsView: View {
     @Environment(\.appTheme) private var theme
 
     enum Page: String, CaseIterable, Identifiable {
-        case appearance, editor, sounds, review, trash, about
+        case appearance, editor, sounds, review, backup, trash, about
         var id: String { rawValue }
         var title: String {
             switch self {
@@ -15,6 +15,7 @@ struct SettingsView: View {
             case .editor: return "محرر الملاحظات"
             case .sounds: return "أصوات التركيز"
             case .review: return "المراجعة الذكية"
+            case .backup: return "النسخ الاحتياطي"
             case .trash: return "المحذوفة مؤخراً"
             case .about: return "حول التطبيق"
             }
@@ -25,6 +26,7 @@ struct SettingsView: View {
             case .editor: return "pencil.and.outline"
             case .sounds: return "waveform"
             case .review: return "rectangle.on.rectangle.angled"
+            case .backup: return "externaldrive"
             case .trash: return "trash"
             case .about: return "info.circle"
             }
@@ -57,6 +59,7 @@ struct SettingsView: View {
                 case .editor: EditorSettingsView()
                 case .sounds: SoundSettingsView()
                 case .review: ReviewSettingsView()
+                case .backup: BackupSettingsView()
                 case .trash: TrashView()
                 case .about: AboutView()
                 case .none: AppearanceSettingsView()
@@ -397,6 +400,120 @@ struct TrashView: View {
         .confirmationDialog("حذف كل الملاحظات نهائياً؟", isPresented: $confirmEmpty, titleVisibility: .visible) {
             Button("حذف نهائياً", role: .destructive) {
                 DataStore.deletePermanently(Array(trashed.filter(\.isAlive)), context: context)
+            }
+        }
+    }
+}
+
+// MARK: - النسخ الاحتياطي
+
+struct BackupSettingsView: View {
+    @Environment(\.appTheme) private var theme
+    @State private var busy = false
+    @State private var message: String?
+
+    var body: some View {
+        Form {
+            Section {
+                Button {
+                    createBackup()
+                } label: {
+                    Label("إنشاء نسخة احتياطية ومشاركتها", systemImage: "square.and.arrow.up")
+                }
+                .disabled(busy)
+                .accessibilityIdentifier("backup.create")
+            } header: {
+                Text("حفظ")
+            } footer: {
+                Text("تُحفظ كل المذكرات والصفحات والمرفقات والمواد في ملف واحد (.sabboura). احفظه في تطبيق الملفات أو iCloud أو أرسله لنفسك، وبهذا يبقى عندك حتى لو انحذف التطبيق.")
+            }
+
+            Section {
+                Button {
+                    chooseBackup()
+                } label: {
+                    Label("استرجاع من نسخة احتياطية", systemImage: "arrow.down.doc")
+                }
+                .disabled(busy)
+                .accessibilityIdentifier("backup.restore")
+            } header: {
+                Text("استرجاع")
+            } footer: {
+                Text("يعمل مع النسخ من أي إصدار سابق. الاسترجاع يضيف المذكرات الناقصة ولا يمسح شيئاً، والمذكرة الموجودة تُستبدل فقط إذا كانت نسخة الملف أحدث منها.")
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .background(theme.background.ignoresSafeArea())
+        .navigationTitle("النسخ الاحتياطي")
+        .navigationBarTitleDisplayMode(.inline)
+        .overlay {
+            if busy {
+                ProgressView("جارٍ العمل…")
+                    .padding(24)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+            }
+        }
+        .alert("النسخ الاحتياطي", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {
+            Button("حسناً", role: .cancel) {}
+        } message: {
+            Text(message ?? "")
+        }
+    }
+
+    private func createBackup() {
+        // أي كتابة مفتوحة تُحفظ أولاً حتى تدخل في النسخة
+        NotificationCenter.default.post(name: .sabbouraFlushRequested, object: nil)
+        DataStore.save(PersistenceController.shared.viewContext)
+        busy = true
+        let stamp = Date().formatted(.iso8601.year().month().day())
+        let url = TemporaryFiles.directory("Backup")
+            .appending(path: "Sabboura-\(stamp).\(BackupService.fileExtension)")
+        DispatchQueue.global(qos: .userInitiated).async {
+            let outcome = Result { try BackupService.export(to: url) }
+            DispatchQueue.main.async {
+                busy = false
+                switch outcome {
+                case .success(let count):
+                    if count == 0 {
+                        message = "ما فيه مذكرات لحفظها."
+                    } else {
+                        SharePresenter.share([url])
+                    }
+                case .failure(let error):
+                    message = "تعذّر إنشاء النسخة: \(error.localizedDescription)"
+                }
+            }
+        }
+    }
+
+    private func chooseBackup() {
+        DocumentPicker.present(types: [.data, .item]) { result in
+            switch result {
+            case .failure(let error):
+                message = error.localizedDescription
+            case .success(let urls):
+                guard let url = urls.first else { return }
+                restore(from: url)
+            }
+        }
+    }
+
+    private func restore(from url: URL) {
+        busy = true
+        DispatchQueue.global(qos: .userInitiated).async {
+            let outcome = Result { try BackupService.restore(from: url) }
+            DispatchQueue.main.async {
+                busy = false
+                switch outcome {
+                case .success(let result):
+                    var parts: [String] = []
+                    if result.added > 0 { parts.append("أُضيفت \(result.added) مذكرة") }
+                    if result.replaced > 0 { parts.append("حُدّثت \(result.replaced) مذكرة") }
+                    if result.skipped > 0 { parts.append("تُركت \(result.skipped) لأن عندك نسخة أحدث منها") }
+                    message = parts.isEmpty ? "النسخة لا تحتوي مذكرات." : parts.joined(separator: " • ")
+                case .failure(let error):
+                    message = error.localizedDescription
+                }
             }
         }
     }
