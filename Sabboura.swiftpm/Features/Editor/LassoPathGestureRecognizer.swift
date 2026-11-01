@@ -7,6 +7,8 @@ import UIKit.UIGestureRecognizerSubclass
 final class LassoPathGestureRecognizer: UIGestureRecognizer {
     private(set) var points: [CGPoint] = []
     private weak var trackedTouch: UITouch?
+    /// إن أعاد false عند نقطة البداية يفشل المعرّف (مثلاً اللمس داخل تحديد قائم يُسحب ولا يرسم مساراً)
+    var shouldBeginAt: ((CGPoint) -> Bool)?
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent) {
         if trackedTouch != nil {
@@ -19,8 +21,13 @@ final class LassoPathGestureRecognizer: UIGestureRecognizer {
             state = .failed
             return
         }
+        let start = touch.location(in: view)
+        if let check = shouldBeginAt, !check(start) {
+            state = .failed
+            return
+        }
         trackedTouch = touch
-        points = [touch.location(in: view)]
+        points = [start]
         state = .began
     }
 

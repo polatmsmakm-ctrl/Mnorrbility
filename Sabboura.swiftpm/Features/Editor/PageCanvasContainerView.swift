@@ -1,5 +1,6 @@
 import PencilKit
 import UIKit
+import UniformTypeIdentifiers
 
 /// لوحة الكتابة الأساسية المبنية على PKCanvasView من PencilKit.
 ///
@@ -7,7 +8,7 @@ import UIKit
 /// - الحبر يُرسم بمحرك PencilKit الرسمي (الضغط والميلان والتنبؤ بحركة القلم).
 /// - الخلفية طبقة مقسّمة أسفل الحبر، وطبقة النصوص والصور فوقه، وكلها تتكبّر مع اللوحة.
 /// - الوضع الداكن: PencilKit يحوّل ألوان الحبر تلقائياً (الأسود يظهر أبيض).
-final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInteractionDelegate {
+final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInteractionDelegate, UIGestureRecognizerDelegate {
     let canvas = PKCanvasView()
     let itemsOverlay = ItemsOverlayView(frame: .zero)
     /// الصور والنصوص تُعرض هنا (فوق الخلفية وتحت الحبر) حتى تكتب فوقها بالقلم
@@ -55,8 +56,25 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
     private var savedPanMinimumTouches: Int?
     private var lastReportedPage = -1
 
+    // MARK: التحديد والنقل والنسخ
+    /// الكتابة المحددة: تُرفع من اللوحة وتُعرض كصورة تُسحب بسلاسة، وتعود للوحة عند إنهاء التحديد.
+    private struct FloatingSelection {
+        var strokes: [PKStroke]
+        var rest: [PKStroke]
+        var rect: CGRect
+        var offset: CGPoint = .zero
+        /// نسخ جديدة (لصق أو تكرار) لم تكن في اللوحة قبل التحديد
+        var isNew = false
+    }
+    private var selection: FloatingSelection?
+    private let selectionPan = UIPanGestureRecognizer()
+    private let selectionView = StrokeSelectionView()
+    private let selectionBar = SelectionMenuBar()
+    private var pastePoint: CGPoint?
+    private static let strokesPasteboardType = "com.sabboura.strokes"
+
     /// ماذا يفعل مسار التحديد الحر: مسح الكتابة أو ترتيبها
-    private enum AreaAction { case erase, tidy }
+    private enum AreaAction { case erase, tidy, select }
     private var areaAction: AreaAction = .erase
     private let holdObserver = StrokeHoldObserver(target: nil, action: nil)
     private var lastStrokeCount = 0
@@ -112,6 +130,21 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
 
         canvas.addGestureRecognizer(holdObserver)
 
+        selectionPan.addTarget(self, action: #selector(handleSelectionPan(_:)))
+        selectionPan.delegate = self
+        selectionPan.isEnabled = false
+        selectionPan.maximumNumberOfTouches = 1
+        selectionPan.allowedTouchTypes = [NSNumber(value: UITouch.TouchType.direct.rawValue),
+                                          NSNumber(value: UITouch.TouchType.pencil.rawValue)]
+        canvas.addGestureRecognizer(selectionPan)
+        canvas.panGestureRecognizer.require(toFail: selectionPan)
+        areaGesture.shouldBeginAt = { [weak self] point in !(self?.isInsideSelection(point) ?? false) }
+
+        selectionView.isHidden = true
+        selectionBar.isHidden = true
+        addSubview(selectionView)
+        addSubview(selectionBar)
+
         areaGesture.addTarget(self, action: #selector(handleAreaGesture(_:)))
         areaGesture.isEnabled = false
         areaGesture.cancelsTouchesInView = true
@@ -143,6 +176,7 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
     func configure(pages: [PageRenderInfo], drawing: PKDrawing, deskColor: UIColor, dark: Bool,
                    seamless: Bool, scrollToPage: Int?) {
         isLoading = true
+        dropSelectionUI()
         self.pages = pages
         self.seamless = seamless
         backgroundColor = deskColor
@@ -182,7 +216,11 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
         return CGSize(width: width, height: last.originY + last.size.height)
     }
 
-    var currentDrawing: PKDrawing { canvas.drawing }
+    /// الرسم الكامل بما فيه الكتابة المحددة حالياً (المرفوعة مؤقتاً من اللوحة).
+    var currentDrawing: PKDrawing {
+        guard let selection else { return canvas.drawing }
+        return PKDrawing(strokes: canvas.drawing.strokes + movedStrokes(of: selection))
+    }
 
     /// سجل التراجع المشترك بين الكتابة والنصوص والصور.
     var itemsUndoManager: UndoManager? { canvas.undoManager }
@@ -210,9 +248,12 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
         tidyOptions = state.tidy
         let textMode = state.tools.kind == .text
         let tidyMode = state.tools.kind == .tidy
-        let areaMode = tidyMode || (state.tools.kind == .eraser && state.tools.eraserMode == .area)
-        areaAction = tidyMode ? .tidy : .erase
-        let tint = tidyMode ? UIColor.systemIndigo : UIColor(red: 0.86, green: 0.15, blue: 0.15, alpha: 1)
+        let selectMode = state.tools.kind == .lasso
+        let areaMode = tidyMode || selectMode || (state.tools.kind == .eraser && state.tools.eraserMode == .area)
+        areaAction = tidyMode ? .tidy : (selectMode ? .select : .erase)
+        if !selectMode { commitSelection() }
+        let tint = tidyMode ? UIColor.systemIndigo
+            : (selectMode ? UIColor.systemBlue : UIColor(red: 0.86, green: 0.15, blue: 0.15, alpha: 1))
         lassoLayer.strokeColor = tint.withAlphaComponent(0.9).cgColor
         lassoLayer.fillColor = tint.withAlphaComponent(0.08).cgColor
         itemsOverlay.isEditingEnabled = textMode
@@ -259,11 +300,12 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
     var canUndo: Bool { canvas.undoManager?.canUndo ?? false }
     var canRedo: Bool { canvas.undoManager?.canRedo ?? false }
 
-    func undo() { canvas.undoManager?.undo() }
-    func redo() { canvas.undoManager?.redo() }
+    func undo() { commitSelection(); canvas.undoManager?.undo() }
+    func redo() { commitSelection(); canvas.undoManager?.redo() }
 
     /// يستبدل الرسم كاملاً مع تسجيل خطوة تراجع (تُستخدم لمسح الصفحة وممحاة التحديد).
     func replaceDrawing(_ newDrawing: PKDrawing, actionName: String) {
+        commitSelection()
         let oldDrawing = canvas.drawing
         isReplacing = true
         canvas.drawing = newDrawing
@@ -460,6 +502,7 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
 
     func scrollViewDidZoom(_ scrollView: UIScrollView) {
         syncGeometry()
+        layoutSelectionUI()
     }
 
     func scrollViewDidEndZooming(_ scrollView: UIScrollView, with view: UIView?, atScale scale: CGFloat) {
@@ -468,6 +511,7 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
     }
 
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        layoutSelectionUI()
         if seamless { reportVisiblePage() }
     }
 
@@ -496,6 +540,7 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
             switch areaAction {
             case .erase: eraseStrokes(enclosedBy: points)
             case .tidy: tidyStrokes(enclosedBy: points)
+            case .select: selectStrokes(enclosedBy: points)
             }
             CATransaction.begin()
             CATransaction.setAnimationDuration(0.25)
@@ -658,5 +703,318 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
             minY = min(minY, point.y); maxY = max(maxY, point.y)
         }
         return CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
+    }
+}
+
+// MARK: - تحديد الكتابة ونقلها ونسخها
+
+extension PageCanvasContainerView {
+    // MARK: أدوات مساعدة
+
+    private func movedStrokes(of sel: FloatingSelection) -> [PKStroke] {
+        guard sel.offset != .zero else { return sel.strokes }
+        let shift = CGAffineTransform(translationX: sel.offset.x, y: sel.offset.y)
+        return sel.strokes.map { stroke in
+            var moved = stroke
+            moved.transform = stroke.transform.concatenating(shift)
+            return moved
+        }
+    }
+
+    /// إطار التحديد بإحداثيات المحتوى (مكبّر مع التكبير الحالي)
+    private func selectionContentRect(_ sel: FloatingSelection) -> CGRect {
+        let zoom = max(canvas.zoomScale, 0.0001)
+        return CGRect(x: (sel.rect.minX + sel.offset.x) * zoom,
+                      y: (sel.rect.minY + sel.offset.y) * zoom,
+                      width: sel.rect.width * zoom,
+                      height: sel.rect.height * zoom)
+    }
+
+    fileprivate func isInsideSelection(_ contentPoint: CGPoint) -> Bool {
+        guard let sel = selection else { return false }
+        return selectionContentRect(sel).insetBy(dx: -10, dy: -10).contains(contentPoint)
+    }
+
+    // MARK: بدء التحديد
+
+    func selectStrokes(enclosedBy contentPoints: [CGPoint]) {
+        commitSelection()
+        hideBar()
+        let zoom = max(canvas.zoomScale, 0.0001)
+        let canvasPoints = contentPoints.map { CGPoint(x: $0.x / zoom, y: $0.y / zoom) }
+        let area = Self.boundingRect(of: canvasPoints)
+        let isTap = area.width < 10 && area.height < 10
+
+        let strokes = canvas.drawing.strokes
+        var picked: [PKStroke] = []
+        var rest: [PKStroke] = []
+
+        if isTap, let point = canvasPoints.last {
+            // نقرة: نحدد أعلى خط تحت الإصبع
+            let tolerance = 12 / zoom
+            var hitIndex: Int?
+            for index in strokes.indices.reversed()
+            where Self.stroke(strokes[index], passesNear: point, tolerance: tolerance) {
+                hitIndex = index
+                break
+            }
+            for (index, stroke) in strokes.enumerated() {
+                if index == hitIndex { picked.append(stroke) } else { rest.append(stroke) }
+            }
+            if picked.isEmpty {
+                showPasteBarIfPossible(at: point)
+                return
+            }
+        } else {
+            let lasso = Self.path(from: canvasPoints, closed: true)
+            for stroke in strokes {
+                var inside = false
+                if stroke.renderBounds.intersects(area) {
+                    let points = InkGeometry.points(of: stroke, spacing: 4)
+                    let count = points.reduce(0) { $0 + (lasso.contains($1) ? 1 : 0) }
+                    inside = CGFloat(count) >= CGFloat(points.count) * 0.5
+                }
+                if inside { picked.append(stroke) } else { rest.append(stroke) }
+            }
+            if picked.isEmpty {
+                onMessage?("ما لقيت كتابة داخل التحديد — ارسم حولها بالكامل")
+                return
+            }
+        }
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        beginSelection(strokes: picked, rest: rest, isNew: false)
+    }
+
+    /// يرفع الكتابة المحددة من اللوحة ويعرضها كصورة قابلة للسحب.
+    private func beginSelection(strokes: [PKStroke], rest: [PKStroke], isNew: Bool) {
+        let selected = PKDrawing(strokes: strokes)
+        let rect = selected.bounds.insetBy(dx: -8, dy: -8)
+        guard rect.width > 1, rect.height > 1 else { return }
+        let zoom = max(canvas.zoomScale, 0.0001)
+        let scale = max(0.5, min(zoom * UIScreen.main.scale, 4096 / max(rect.width, rect.height)))
+        var image: UIImage?
+        canvas.traitCollection.performAsCurrent {
+            image = selected.image(from: rect, scale: scale)
+        }
+
+        isReplacing = true
+        canvas.drawing = PKDrawing(strokes: rest)
+        lastStrokeCount = rest.count
+        isReplacing = false
+
+        selection = FloatingSelection(strokes: strokes, rest: rest, rect: rect, offset: .zero, isNew: isNew)
+        selectionView.imageView.image = image
+        selectionView.isHidden = false
+        selectionPan.isEnabled = true
+        showSelectionBar()
+        layoutSelectionUI()
+        onDrawingChanged?()
+    }
+
+    // MARK: عرض التحديد
+
+    func layoutSelectionUI() {
+        guard let sel = selection else { return }
+        let frame = canvas.convert(selectionContentRect(sel), to: self)
+        if selectionView.frame != frame { selectionView.frame = frame }
+        placeBar(around: frame)
+    }
+
+    private func placeBar(around frame: CGRect) {
+        guard !selectionBar.isHidden else { return }
+        let size = selectionBar.fittingSize
+        var x = frame.midX - size.width / 2
+        x = min(max(x, 8), max(8, bounds.width - size.width - 8))
+        var y = frame.minY - size.height - 10
+        if y < topInset + 4 { y = frame.maxY + 10 }
+        y = min(max(y, topInset + 4), max(topInset + 4, bounds.height - size.height - 8))
+        selectionBar.frame = CGRect(x: x, y: y, width: size.width, height: size.height)
+    }
+
+    private func showSelectionBar() {
+        selectionBar.set([
+            .init(title: "نسخ", symbol: "doc.on.doc") { [weak self] in self?.copySelection() },
+            .init(title: "قص", symbol: "scissors") { [weak self] in self?.cutSelection() },
+            .init(title: "تكرار", symbol: "plus.square.on.square") { [weak self] in self?.duplicateSelection() },
+            .init(title: "حذف", symbol: "trash", destructive: true) { [weak self] in self?.deleteSelection() }
+        ])
+        selectionBar.isHidden = false
+        selectionBar.alpha = 1
+    }
+
+    private func hideBar() {
+        selectionBar.isHidden = true
+        pastePoint = nil
+    }
+
+    /// نقرة على فراغ: إن كان في الحافظة كتابة منسوخة من التطبيق يظهر زر اللصق.
+    private func showPasteBarIfPossible(at canvasPoint: CGPoint) {
+        guard UIPasteboard.general.contains(pasteboardTypes: [Self.strokesPasteboardType]) else { return }
+        pastePoint = canvasPoint
+        selectionBar.set([
+            .init(title: "لصق", symbol: "doc.on.clipboard") { [weak self] in self?.pasteFromClipboard() }
+        ])
+        selectionBar.isHidden = false
+        selectionBar.alpha = 1
+        let zoom = max(canvas.zoomScale, 0.0001)
+        let anchor = canvas.convert(CGPoint(x: canvasPoint.x * zoom, y: canvasPoint.y * zoom), to: self)
+        placeBar(around: CGRect(x: anchor.x - 1, y: anchor.y - 1, width: 2, height: 2))
+    }
+
+    // MARK: السحب
+
+    @objc func handleSelectionPan(_ gesture: UIPanGestureRecognizer) {
+        guard var sel = selection else { return }
+        let zoom = max(canvas.zoomScale, 0.0001)
+        switch gesture.state {
+        case .began:
+            selectionBar.alpha = 0
+        case .changed:
+            let translation = gesture.translation(in: canvas)
+            gesture.setTranslation(.zero, in: canvas)
+            sel.offset.x += translation.x / zoom
+            sel.offset.y += translation.y / zoom
+            selection = sel
+            layoutSelectionUI()
+        case .ended, .cancelled, .failed:
+            selectionBar.alpha = 1
+            layoutSelectionUI()
+            onDrawingChanged?()
+        default:
+            break
+        }
+    }
+
+    func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        guard gestureRecognizer === selectionPan else { return true }
+        let location = gestureRecognizer.location(in: canvas)
+        let translation = selectionPan.translation(in: canvas)
+        return isInsideSelection(CGPoint(x: location.x - translation.x, y: location.y - translation.y))
+    }
+
+    // MARK: إنهاء التحديد
+
+    /// يعيد الكتابة المحددة إلى اللوحة في مكانها الجديد (خطوة تراجع واحدة).
+    func commitSelection() {
+        guard let sel = selection else { return }
+        selection = nil
+        dropSelectionUI()
+
+        let final = PKDrawing(strokes: sel.rest + movedStrokes(of: sel))
+        let changed = sel.offset != .zero || sel.isNew
+        let old = PKDrawing(strokes: sel.isNew ? sel.rest : sel.rest + sel.strokes)
+
+        isReplacing = true
+        canvas.drawing = final
+        lastStrokeCount = final.strokes.count
+        isReplacing = false
+        if changed, let undoManager = canvas.undoManager {
+            let name = sel.isNew ? "لصق" : "نقل التحديد"
+            undoManager.registerUndo(withTarget: self) { target in
+                target.replaceDrawing(old, actionName: name)
+            }
+            undoManager.setActionName(name)
+        }
+        onDrawingChanged?()
+    }
+
+    /// يخفي واجهة التحديد دون المساس بالرسم (قبل إعادة بناء اللوحة).
+    func dropSelectionUI() {
+        selection = nil
+        selectionPan.isEnabled = false
+        selectionView.isHidden = true
+        selectionView.imageView.image = nil
+        selectionBar.isHidden = true
+        pastePoint = nil
+    }
+
+    // MARK: الأوامر
+
+    private func copySelection() {
+        guard let sel = selection else { return }
+        let drawing = PKDrawing(strokes: movedStrokes(of: sel))
+        let bounds = drawing.bounds.insetBy(dx: -12, dy: -12)
+        guard bounds.width > 1, bounds.height > 1 else { return }
+
+        // صورة بخلفية بيضاء وحبر داكن مهما كان الوضع، حتى تظهر صحيحة في أي تطبيق
+        var png: Data?
+        UITraitCollection(userInterfaceStyle: .light).performAsCurrent {
+            let ink = drawing.image(from: bounds, scale: 3)
+            let format = UIGraphicsImageRendererFormat()
+            format.scale = 3
+            format.opaque = true
+            png = UIGraphicsImageRenderer(size: bounds.size, format: format).image { context in
+                UIColor.white.setFill()
+                context.fill(CGRect(origin: .zero, size: bounds.size))
+                ink.draw(in: CGRect(origin: .zero, size: bounds.size))
+            }.pngData()
+        }
+        var item: [String: Any] = [Self.strokesPasteboardType: drawing.dataRepresentation()]
+        if let png { item[UTType.png.identifier] = png }
+        UIPasteboard.general.setItems([item], options: [:])
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        onMessage?("تم النسخ — الصق الصورة في أي تطبيق، أو اضغط على فراغ هنا للصق الكتابة")
+    }
+
+    private func cutSelection() {
+        copySelection()
+        deleteSelection()
+    }
+
+    private func deleteSelection() {
+        guard let sel = selection else { return }
+        selection = nil
+        dropSelectionUI()
+        let old = PKDrawing(strokes: sel.isNew ? sel.rest : sel.rest + sel.strokes)
+        isReplacing = true
+        canvas.drawing = PKDrawing(strokes: sel.rest)
+        lastStrokeCount = sel.rest.count
+        isReplacing = false
+        if let undoManager = canvas.undoManager {
+            undoManager.registerUndo(withTarget: self) { target in
+                target.replaceDrawing(old, actionName: "حذف التحديد")
+            }
+            undoManager.setActionName("حذف التحديد")
+        }
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        onDrawingChanged?()
+    }
+
+    private func duplicateSelection() {
+        guard let sel = selection else { return }
+        let originals = movedStrokes(of: sel)
+        let shift = CGAffineTransform(translationX: 28, y: 28)
+        let copies = originals.map { stroke -> PKStroke in
+            var copy = stroke
+            copy.transform = stroke.transform.concatenating(shift)
+            return copy
+        }
+        // الأصل يرجع للوحة في مكانه، والنسخة تصير هي المحددة
+        let base = sel.rest + originals
+        selection = nil
+        dropSelectionUI()
+        isReplacing = true
+        canvas.drawing = PKDrawing(strokes: base)
+        lastStrokeCount = base.count
+        isReplacing = false
+        beginSelection(strokes: copies, rest: base, isNew: true)
+    }
+
+    private func pasteFromClipboard() {
+        guard let data = UIPasteboard.general.data(forPasteboardType: Self.strokesPasteboardType),
+              let pasted = try? PKDrawing(data: data), !pasted.strokes.isEmpty else {
+            onMessage?("ما فيه كتابة منسوخة للصقها")
+            return
+        }
+        let center = pastePoint ?? CGPoint(x: contentExtent.width / 2, y: contentExtent.height / 2)
+        hideBar()
+        let bounds = pasted.bounds
+        let shift = CGAffineTransform(translationX: center.x - bounds.midX, y: center.y - bounds.midY)
+        let strokes = pasted.strokes.map { stroke -> PKStroke in
+            var moved = stroke
+            moved.transform = stroke.transform.concatenating(shift)
+            return moved
+        }
+        beginSelection(strokes: strokes, rest: canvas.drawing.strokes, isNew: true)
     }
 }

@@ -372,8 +372,6 @@ final class EditorController: ObservableObject {
     private func autosave() {
         pendingSave = nil
         guard note.isAlive, isDirty, let view = canvasView, !layout.isEmpty else { return }
-        // أثناء التحديد الحر لا نقرأ رسم اللوحة (القراءة قد تُلغي التحديد)؛ يُحفظ عند تغيير الأداة
-        guard tools.kind != .lasso else { return }
 
         let drawing = view.currentDrawing
         isDirty = false
@@ -576,6 +574,8 @@ final class EditorController: ObservableObject {
         if kind.isInk { tools.lastInkKind = kind }
         if kind == .text {
             showToast("انقر على الصفحة لإضافة نص — واسحب الصور والنصوص لتحريكها")
+        } else if kind == .lasso {
+            showToast("ارسم دائرة حول الكتابة أو انقر على خط لتحديده — اسحبه لنقله، أو اختر نسخ / قص / تكرار")
         } else if kind == .tidy {
             showToast("ارسم دائرة حول الكتابة لترتيبها — اضغط الأداة مرة ثانية للخيارات")
         } else if kind == .laser {
