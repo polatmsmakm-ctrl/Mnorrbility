@@ -1,0 +1,1 @@
+/Users/runner/work/Mnorrbility/Mnorrbility/AppSources/Utilities/AudioRecorder.swift:29:99: warning: 'allowBluetooth' was deprecated in iOS 8.0: renamed to 'AVAudioSession.CategoryOptions.allowBluetoothHFP'

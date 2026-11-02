@@ -1,0 +1,524 @@
+[
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "8EAA0D8A-D1EB-4EB3-9AC6-1E2D1EA7238E.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "17-trash_0_D9598DA9-59F7-4233-B848-8AD87C141CF3.png",
+        "timestamp" : 1793605764.464
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "29A3A36F-61C8-4725-BBC1-41205852E55C.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "16-favorites_0_44BC19AD-C6E3-48CF-B5F8-116356969FE3.png",
+        "timestamp" : 1793605747.085
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "258EF6C1-3198-40C5-8C4B-2058893C53CB.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "15-folder-with-note_0_5C25F0B8-D0C4-43DB-A447-7242D8F178F3.png",
+        "timestamp" : 1793605716.117
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "75517A2D-4D62-4343-A867-08869A7E37CA.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "14-share-pdf_0_8653D4FE-E243-445A-B4BB-EBD41BDB8E2F.png",
+        "timestamp" : 1793605699.826
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "A61B75CC-61D4-4B54-A8C1-F07CF373CBD0.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "13-zoomed_0_C02E2860-5529-4F18-AF4C-7DE476F1452E.png",
+        "timestamp" : 1793605669.774
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "B08CA67E-FB31-4B83-B45B-651DB58C0A70.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "12-pages-overview_0_4797CCAE-AD71-4A74-94E7-DC9B232CA1A3.png",
+        "timestamp" : 1793605655.775
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "E275FC56-D89D-42ED-99FF-AD7D7792F934.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "11-seamless_0_0E6D3910-9CB8-433E-BF10-4147203B7749.png",
+        "timestamp" : 1793605643.603
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "4D8E427C-36AF-466C-A722-E6414EFEDF17.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "10-page-2_0_F2A5F64F-63F0-4C3C-96A4-662ABE1FA93F.png",
+        "timestamp" : 1793605635.956
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "78C47B3B-ECCA-4C86-9245-2EAB09CBF233.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "09-view-settings_0_F9B709A7-1A7F-4A18-A07B-B5DF7260461A.png",
+        "timestamp" : 1793605585.271
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "14FC6F94-CE78-48C3-AF7A-DDC9109CFE09.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "08-template-picker_0_2AFCBEC6-90D4-48E0-90F1-589C27BF2CC2.png",
+        "timestamp" : 1793605569.59
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "29DAAAE5-26AD-4837-9BF9-EA8393948EA5.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "07-text_0_2F6921DB-AABA-483C-A27B-213D28A9C17B.png",
+        "timestamp" : 1793605549.914
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "CC9A0F77-11E2-4D43-8BCE-09F42F5EE5AC.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "06-erased_0_EAF1323A-6FD9-4F57-B87B-1BA0288ACBED.png",
+        "timestamp" : 1793605522.466
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "6184F4C9-26A9-4458-9896-9F4EB9C9F0B7.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "05-tool-options_0_712C8F88-A23B-450A-B7E1-AAB9AF18A402.png",
+        "timestamp" : 1793605498.057
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "CFE1840A-846B-4AA9-8DF7-D58446DF61C3.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "04-drawn_0_EFEED6FA-4F9E-47B4-A0D7-1085B8626C60.png",
+        "timestamp" : 1793605493.946
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "52BD273C-25C0-4DFC-9495-A0EDD2616ADC.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "03-editor-empty_0_E25F66AF-F181-4369-9196-ACC631C6A931.png",
+        "timestamp" : 1793605432.254
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "B00CE97D-2BA1-4BC0-B6FE-507B7F309E92.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "02-folder_0_283F434F-AB1D-40A4-A76C-EDF4394B1BE0.png",
+        "timestamp" : 1793605423.707
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "C104A245-0124-4758-9CB9-BB9ED17F5014.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "01-library_0_B456E04A-C6AB-47F2-99DA-9F51AA72B10A.png",
+        "timestamp" : 1793605419.535
+      }
+    ],
+    "testIdentifier" : "SabbouraUITests/test1_FullFlow()",
+    "testIdentifierURL" : "test://com.apple.xcode/Sabboura/SabbouraUITests/SabbouraUITests/test1_FullFlow"
+  },
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "F47EFCD7-5DE9-40C3-AA0A-813DC7CA33EC.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "24-dark-editor_0_8E5F0511-7A94-4625-A84A-6EAE804DC8AB.png",
+        "timestamp" : 1793605871.208
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "D66F6FAD-C05C-4DC4-A38E-BD619B915446.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "23-dark-library_0_50F9F83E-A5DF-4567-BE95-1A6C0E391289.png",
+        "timestamp" : 1793605862.641
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "D503BCF3-644B-4B5B-987D-E5A6F88137C8.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "22-appearance_0_8464C769-AA4D-4494-92B2-430D5FE9B06F.png",
+        "timestamp" : 1793605855.922
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "2B264165-1927-438D-9D26-EB54827F8A5D.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "21-light-editor_0_3233F83E-267C-49B2-83C4-D2F99CA16C00.png",
+        "timestamp" : 1793605828.851
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "9660A770-0E5D-475E-ADB2-2A59B3D07208.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "20-light-library_0_62025FF6-DF72-420F-84F8-5734F82D5197.png",
+        "timestamp" : 1793605785.653
+      }
+    ],
+    "testIdentifier" : "SabbouraUITests/test2_Themes()",
+    "testIdentifierURL" : "test://com.apple.xcode/Sabboura/SabbouraUITests/SabbouraUITests/test2_Themes"
+  },
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "55F56499-AFF7-4812-9E45-D309822271E4.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "34-gallery_0_54F7319A-E53A-4EF0-9956-615650A24E2D.png",
+        "timestamp" : 1793605973.466
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "8CA4C295-A592-4671-B86A-AA927E2377D5.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "37-review-pdf-summary_0_55E73412-4904-4F2A-B449-A90AB6DA9B85.png",
+        "timestamp" : 1793605959.07
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "C59AF9D4-8CE1-4429-B76B-A60ED14598A4.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "36-review-pdf-quiz_0_C9E2081C-6D3C-41B5-BA74-D27ED07963FE.png",
+        "timestamp" : 1793605955.218
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "EFC39870-5CA8-4FB8-8BFE-DC8DE10E7470.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "35-review-pdf_0_AE6CC931-398B-4749-B77F-6DBB0F407BFE.png",
+        "timestamp" : 1793605951.93
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "AFAC9243-FBFB-4FB2-9BC7-D66E8F08A4F0.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "33-share-png_0_E55309DE-B61D-471C-8DE7-D4099578E769.png",
+        "timestamp" : 1793605930.032
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "CFFA1CC1-5D5A-4B1E-A6F1-5C575050B0FB.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "32-attachments_0_48DB214C-F021-47BD-8678-AF79A9946F92.png",
+        "timestamp" : 1793605917.224
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "6A09A5AB-C39F-4389-867C-72F87EB63ECD.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "31-pdf-annotated_0_30ABD407-50E2-4777-A033-C9FCE8624739.png",
+        "timestamp" : 1793605909.423
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "578C7F0E-525E-48FE-8499-6126A27C6517.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "30-pdf-dark_0_A7D1AEC9-2902-4177-8949-2D1E414833FC.png",
+        "timestamp" : 1793605898.851
+      }
+    ],
+    "testIdentifier" : "SabbouraUITests/test3_PDFImport()",
+    "testIdentifierURL" : "test://com.apple.xcode/Sabboura/SabbouraUITests/SabbouraUITests/test3_PDFImport"
+  },
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "F500BEB0-FB02-455C-AC78-16868E45A45C.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "41-restored-drawing_0_8E26F9CE-B1E2-4727-B797-34F920984CAC.png",
+        "timestamp" : 1793606038.413
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "4E13DCE0-59E9-4DFC-BBF0-44A8475B666C.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "40-after-relaunch_0_BAB5A5A3-AFF2-463C-9848-40511300E63D.png",
+        "timestamp" : 1793606034.543
+      }
+    ],
+    "testIdentifier" : "SabbouraUITests/test4_Persistence()",
+    "testIdentifierURL" : "test://com.apple.xcode/Sabboura/SabbouraUITests/SabbouraUITests/test4_Persistence"
+  },
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "712FA856-5657-4F05-992B-E2EB4674E5B4.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "52-study-running_0_5E70642A-FEE3-481F-81E2-1624A2FD32E7.png",
+        "timestamp" : 1793606061.373
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "37906F43-86D7-4905-9715-CB1FC7639363.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "51-study-setup_0_068FE13B-9FAD-4A25-BE42-A719F6734C1C.png",
+        "timestamp" : 1793606056.134
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "C994B9B2-3B61-4D65-BC3D-3721BA2FFB60.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "50-home_0_C35CAC6E-5E1A-463A-9225-E52E57E7367A.png",
+        "timestamp" : 1793606047.04
+      }
+    ],
+    "testIdentifier" : "SabbouraUITests/test5_HomeAndStudy()",
+    "testIdentifierURL" : "test://com.apple.xcode/Sabboura/SabbouraUITests/SabbouraUITests/test5_HomeAndStudy"
+  },
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "6D055B2D-7F85-40C5-87CA-F31871FE8B6C.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "63-after-tidy_0_36D99606-3FEB-4ACA-81F7-058D8189076B.png",
+        "timestamp" : 1793606133.164
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "75F9D4F0-16D2-4478-8F51-9FCB90FC8A2C.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "62-tidy-options_0_25AD5F7E-F95D-454C-890B-264DF999A6F7.png",
+        "timestamp" : 1793606128.619
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "A93BBFDC-4D59-4E2B-8EBF-C9C63A5A8C53.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "61-before-tidy_0_F39A0342-07D2-4017-8B06-B97F3EABD036.png",
+        "timestamp" : 1793606119.337
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "3CB81590-8E77-4CB8-9EAB-3D42A98C7211.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "60-smart-line_0_67BD3702-EAAF-4230-ADDA-E16CF5551096.png",
+        "timestamp" : 1793606086.491
+      }
+    ],
+    "testIdentifier" : "SabbouraUITests/test6_SmartInk()",
+    "testIdentifierURL" : "test://com.apple.xcode/Sabboura/SabbouraUITests/SabbouraUITests/test6_SmartInk"
+  },
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "4F72C592-4B8D-4C7C-82B9-195A339F69DD.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "73-image-annotated_0_0B77679C-8C4A-45FA-A0DD-895F7FAAC878.png",
+        "timestamp" : 1793606178.004
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "B503D012-F802-4D69-B23D-B2A984AAFB80.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "72-image-moved_0_369D8222-39E2-40BE-B780-A007BD0D7259.png",
+        "timestamp" : 1793606163.209
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "F9E5083E-8CF2-4669-9FA0-9782446B5A34.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "71-image-resized_0_1095077C-D0E7-4060-8A4E-A08BEC1CCAD6.png",
+        "timestamp" : 1793606160.781
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "789E3016-4C5A-4C48-9D76-21DB2EDD6484.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "70-image-inserted_0_3F0B4CC3-9277-4B2B-8BA3-E34BB4DEDCAA.png",
+        "timestamp" : 1793606157.109
+      }
+    ],
+    "testIdentifier" : "SabbouraUITests/test7_Images()",
+    "testIdentifierURL" : "test://com.apple.xcode/Sabboura/SabbouraUITests/SabbouraUITests/test7_Images"
+  },
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "5D51D347-399B-472F-B63F-976BAA9A0D04.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "85-review-settings-gemini_0_3576A60C-1D0E-444E-BF3F-43F9B5FCA4DA.png",
+        "timestamp" : 1793606314.561
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "DA2C7F25-FA30-4B74-AC55-1F91A937A277.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "84-review-from-menu_0_98CD4AAF-C71C-4207-9BFD-D428C1DAF58D.png",
+        "timestamp" : 1793606295.473
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "C5D9C1F7-C02B-4D0F-AE65-06A8BF65A32E.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "83-review-summary_0_C221C0E5-E3D0-4065-8A09-72FC7AD27133.png",
+        "timestamp" : 1793606276.619
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "1B0B6B96-39C2-436B-8EE7-5780A74E31B9.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "82-review-quiz_0_4464CD63-5AE7-4B85-8297-C720EF598BE4.png",
+        "timestamp" : 1793606264.063
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "F4FCC097-90AC-4058-A293-A54AD9EC32C9.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "81-review-card-back_0_BF7B456C-98B6-4FCF-A0FC-3482E714D360.png",
+        "timestamp" : 1793606241.933
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "4FA8AE47-BEFF-492A-BCF7-9C999C3BB356.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "80-review-card_0_F255E211-AEA2-4593-A853-BE2219E35316.png",
+        "timestamp" : 1793606236.617
+      }
+    ],
+    "testIdentifier" : "SabbouraUITests/test8_Review()",
+    "testIdentifierURL" : "test://com.apple.xcode/Sabboura/SabbouraUITests/SabbouraUITests/test8_Review"
+  },
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "7C1F459E-5CB3-4A6E-B002-CFA7F6A82B08.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "92-ask-note_0_EDC60329-7298-487A-9605-4376AFA5EBA3.png",
+        "timestamp" : 1793606361.868
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "0A87D423-07D6-4A2E-8819-E7FBFDAC9A8F.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "91-math-sheet_0_F3EA3D64-99A4-4BE8-9B81-853DE9187AC3.png",
+        "timestamp" : 1793606349.813
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "CB833DA5-BA4E-42BE-B82D-C1E0C39A3C02",
+        "deviceName" : "iPhone 16 Pro",
+        "exportedFileName" : "87B9A2CD-3DA8-4731-9E27-F61D994E7046.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "90-selection-smart_0_07D162E3-EF0C-434B-A64C-46A1232259C5.png",
+        "timestamp" : 1793606346.109
+      }
+    ],
+    "testIdentifier" : "SabbouraUITests/test9_SmartFeatures()",
+    "testIdentifierURL" : "test://com.apple.xcode/Sabboura/SabbouraUITests/SabbouraUITests/test9_SmartFeatures"
+  }
+]
