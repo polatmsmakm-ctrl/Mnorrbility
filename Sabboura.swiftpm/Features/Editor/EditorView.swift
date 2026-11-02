@@ -231,6 +231,8 @@ struct EditorView: View {
         Button {
             controller.flush()
             appState.userClosedNote()
+            // لوحة الكتابة قد تبقى المستجيب الأول بعد الإغلاق فتلتقط الأحداث؛ نحررها قبل الرجوع
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
             if isPad { appState.path.removeAll() } else { dismiss() }
         } label: {
             Image(systemName: "arrow.left")

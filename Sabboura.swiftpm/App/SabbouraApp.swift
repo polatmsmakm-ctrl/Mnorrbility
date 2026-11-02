@@ -324,6 +324,15 @@ struct PadEditorLayer: View {
                         removal: .opacity.combined(with: .scale(scale: 1.05))))
             }
         }
+        // أثناء حركة الإغلاق تبقى المذكرة مرسومة فوق القائمة وهي تتلاشى؛ بدون هذا تلتقط اللمسات
+        // وتمنع الضغط المطوّل (قائمة المذكرة) على البطاقات تحتها
+        .allowsHitTesting(isOpen)
+        .accessibilityHidden(!isOpen)
         .animation(.spring(response: 0.42, dampingFraction: 0.9), value: appState.path.last?.objectID)
+    }
+
+    private var isOpen: Bool {
+        guard let note = appState.path.last else { return false }
+        return note.isAlive
     }
 }

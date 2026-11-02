@@ -510,6 +510,7 @@ struct BackupSettingsView: View {
                     if result.added > 0 { parts.append("أُضيفت \(result.added) مذكرة") }
                     if result.replaced > 0 { parts.append("حُدّثت \(result.replaced) مذكرة") }
                     if result.skipped > 0 { parts.append("تُركت \(result.skipped) لأن عندك نسخة أحدث منها") }
+                    if result.damaged > 0 { parts.append("تعذّرت قراءة \(result.damaged) مذكرة من الملف، وبقيت نسختك كما هي") }
                     message = parts.isEmpty ? "النسخة لا تحتوي مذكرات." : parts.joined(separator: " • ")
                 case .failure(let error):
                     message = error.localizedDescription

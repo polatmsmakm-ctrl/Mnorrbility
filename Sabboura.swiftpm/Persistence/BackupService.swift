@@ -93,6 +93,8 @@ enum BackupService {
         var added = 0
         var replaced = 0
         var skipped = 0
+        /// مذكرات بياناتها تالفة داخل الملف: لم تُستورد، وبقيت النسخة الموجودة على الجهاز كما هي
+        var damaged = 0
     }
 
     enum BackupError: LocalizedError {
@@ -317,9 +319,42 @@ enum BackupService {
             if let id = existing.uuid?.uuidString { existingNotes[id] = existing }
         }
 
+        /// يقرأ المحتوى المشار إليه؛ nil إذا كان المرجع موجوداً لكن القراءة فشلت (ملف تالف)
+        func checkedBlob(_ ref: BlobRef?) -> Data?? {
+            guard let ref, ref.length > 0 else { return .some(nil) }
+            guard let data = blob(ref), data.count == Int(ref.length) else { return nil }
+            return .some(data)
+        }
+
         var result = RestoreResult()
         for item in manifest.notes ?? [] {
             try autoreleasepool {
+                // نقرأ كل محتوى المذكرة ونتحقق منه قبل أن نلمس النسخة الموجودة على الجهاز،
+                // حتى لا نحذف مذكرة سليمة ونستبدلها بصفحات فارغة من ملف تالف
+                var pageBlobs: [(drawing: Data?, items: Data?)] = []
+                var attachmentBlobs: [Data?] = []
+                var intact = true
+                for source in item.pages ?? [] {
+                    guard let drawing = checkedBlob(source.drawing), let items = checkedBlob(source.items) else {
+                        intact = false
+                        break
+                    }
+                    pageBlobs.append((drawing, items))
+                }
+                if intact {
+                    for source in item.attachments ?? [] {
+                        guard let data = checkedBlob(source.data) else {
+                            intact = false
+                            break
+                        }
+                        attachmentBlobs.append(data)
+                    }
+                }
+                guard intact, let studyData = checkedBlob(item.study) else {
+                    result.damaged += 1
+                    return
+                }
+
                 if let id = item.uuid, let current = existingNotes[id] {
                     let currentStamp = current.updatedAt?.timeIntervalSince1970 ?? 0
                     if currentStamp >= (item.updatedAt ?? 0) {
@@ -342,14 +377,14 @@ enum BackupService {
                 note.deletedAt = date(item.deletedAt)
                 note.lastOpenedAt = date(item.lastOpenedAt)
                 note.subject = item.subjectID.flatMap { subjects[$0] }
-                note.studyData = blob(item.study)
+                note.studyData = studyData
 
                 for (offset, source) in (item.pages ?? []).enumerated() {
                     let page = DataStore.insert(CDPage.self, into: context)
                     page.uuid = source.uuid.flatMap { UUID(uuidString: $0) } ?? UUID()
                     page.index = source.index ?? Int64(offset)
-                    page.drawingData = blob(source.drawing)
-                    page.itemsData = blob(source.items)
+                    page.drawingData = pageBlobs[offset].drawing
+                    page.itemsData = pageBlobs[offset].items
                     page.backgroundKind = source.backgroundKind ?? BackgroundKind.lined.rawValue
                     page.backgroundColorHex = source.backgroundColorHex ?? "#FFFFFF"
                     page.lineColorHex = source.lineColorHex ?? "#C7D3E3"
@@ -361,12 +396,12 @@ enum BackupService {
                     page.note = note
                 }
 
-                for source in item.attachments ?? [] {
+                for (offset, source) in (item.attachments ?? []).enumerated() {
                     let attachment = DataStore.insert(CDAttachment.self, into: context)
                     attachment.uuid = source.uuid.flatMap { UUID(uuidString: $0) } ?? UUID()
                     attachment.fileName = source.fileName ?? ""
                     attachment.typeIdentifier = source.typeIdentifier ?? "public.data"
-                    let data = blob(source.data)
+                    let data = attachmentBlobs[offset]
                     attachment.data = data
                     attachment.byteCount = source.byteCount ?? Int64(data?.count ?? 0)
                     attachment.createdAt = date(source.createdAt) ?? Date()
