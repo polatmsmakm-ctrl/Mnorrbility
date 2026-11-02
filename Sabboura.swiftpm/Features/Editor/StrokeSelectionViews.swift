@@ -100,6 +100,8 @@ final class SelectionMenuBar: UIView {
         }
     }
 
+    var buttons: [UIView] { stack.arrangedSubviews }
+
     var fittingSize: CGSize {
         layoutIfNeeded()
         return systemLayoutSizeFitting(UIView.layoutFittingCompressedSize)

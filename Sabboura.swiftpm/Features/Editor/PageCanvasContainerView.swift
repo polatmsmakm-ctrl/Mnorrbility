@@ -189,7 +189,12 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
 
     // لوحة PencilKit تخفي ما بداخلها عن تقنيات الإتاحة، فنعرض النصوص والصور بجانبها صراحةً.
     override var accessibilityElements: [Any]? {
-        get { [canvas] + itemsOverlay.accessibleItemViews }
+        get {
+            var elements: [Any] = [canvas] + itemsOverlay.accessibleItemViews
+            // أزرار شريط التحديد (نسخ، نص، حل …) تظهر لـ VoiceOver واختبارات الواجهة
+            if !selectionBar.isHidden { elements.append(contentsOf: selectionBar.buttons) }
+            return elements
+        }
         set { }
     }
 
