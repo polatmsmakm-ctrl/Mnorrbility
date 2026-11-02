@@ -79,6 +79,10 @@ final class EditorController: ObservableObject {
     @Published private(set) var toast: String? = nil
     @Published private(set) var isRecording = false
     @Published private(set) var recordingStart: Date? = nil
+    /// مسألة محددة تنتظر الحل (تفتح نافذة الحل)
+    @Published var mathProblem: MathProblem? = nil
+    /// وضع الاستماع: التسجيلات مربوطة بالكتابة
+    @Published private(set) var replay: AudioReplayController? = nil
 
     private(set) var contentDark = false
     private(set) var theme: AppTheme = .darkBlue
@@ -164,6 +168,12 @@ final class EditorController: ObservableObject {
         view.onPencilDoubleTap = { [weak self] in self?.handlePencilDoubleTap() }
         view.onVisiblePageChanged = { [weak self] index in self?.visiblePageChanged(index) }
         view.onMessage = { [weak self] message in self?.showToast(message) }
+        view.onConvertSelectionToText = { [weak self] image, rect in self?.convertHandwriting(image, rect: rect) }
+        view.onSolveSelection = { [weak self] image, rect in
+            self?.mathProblem = MathProblem(image: image, canvasRect: rect)
+        }
+        view.onReplayTap = { [weak self] date in self?.replayTapped(at: date) }
+        view.setReplayMode(replay != nil)
         view.itemsOverlay.onTapEmpty = { [weak self] point in self?.createTextItem(at: point) }
         view.itemsOverlay.onTapItem = { [weak self] id in self?.editItem(id) }
         view.itemsOverlay.onItemFrameChanged = { [weak self] id, frame in self?.moveItem(id, to: frame) }
@@ -991,9 +1001,105 @@ final class EditorController: ObservableObject {
         }
     }
 
+    // MARK: - تحويل خط اليد لنص
+
+    /// يتعرّف على الكتابة المحددة (عربي وإنجليزي، على الجهاز) ويستبدلها بنص مطبوع في مكانها.
+    func convertHandwriting(_ image: UIImage, rect: CGRect) {
+        guard let cgImage = image.cgImage else { return }
+        isBusy = true
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let text = TextRecognizer.recognize(cgImage)
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.isBusy = false
+                let cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !cleaned.isEmpty else {
+                    self.showToast("ما قدرت أقرأ الكتابة — جرّب تحدد كلمات أوضح")
+                    return
+                }
+                let lines = max(1, cleaned.components(separatedBy: .newlines).count)
+                let size = min(48, max(16, Double(rect.height) / Double(lines) * 0.55))
+                guard self.insertText(cleaned, in: rect, fontSize: size) else {
+                    self.showToast("ما قدرت أضيف النص في هذا المكان")
+                    return
+                }
+                self.canvasView?.removeSelectedStrokes()
+                self.showToast("تحوّلت الكتابة لنص — تقدر تتراجع، واضغط على النص لتعديله بأداة النص")
+            }
+        }
+    }
+
+    /// يضيف نصاً مطبوعاً في الصفحة عند إطار معيّن (إحداثيات اللوحة).
+    @discardableResult
+    func insertText(_ text: String, in canvasRect: CGRect, fontSize: Double) -> Bool {
+        let anchor = CGPoint(x: canvasRect.minX, y: canvasRect.minY)
+        guard let info = layout.first(where: { $0.frame.contains(anchor) })
+                ?? layout.first(where: { $0.frame.intersects(canvasRect) }) else { return false }
+        let localX = max(12, min(canvasRect.minX, info.size.width - 140))
+        let localY = max(12, canvasRect.minY - info.originY)
+        let width = max(140, min(Double(canvasRect.width) + 24, Double(info.size.width - localX - 12)))
+        var item = PageItem(kind: .text,
+                            x: Double(localX),
+                            y: Double(localY),
+                            width: width,
+                            height: 40,
+                            text: text,
+                            fontSize: fontSize,
+                            colorHex: tools.color(for: tools.lastInkKind))
+        item.fitTextHeight()
+        saveItem(ItemEditTarget(item: item, pageID: info.id, isNew: true))
+        return true
+    }
+
+    /// يضيف حل المسألة كنص تحتها.
+    func insertSolution(_ answer: String, below canvasRect: CGRect) {
+        let plain = answer.replacingOccurrences(of: "**", with: "")
+            .replacingOccurrences(of: "__", with: "")
+            .replacingOccurrences(of: "`", with: "")
+        let target = CGRect(x: canvasRect.minX, y: canvasRect.maxY + 10, width: max(canvasRect.width, 420), height: 40)
+        if insertText(plain, in: target, fontSize: 18) {
+            showToast("أُضيف الحل تحت المسألة")
+        }
+    }
+
+    // MARK: - وضع الاستماع (التسجيل مع الكتابة)
+
+    var hasRecordings: Bool {
+        note.isAlive && note.sortedAttachments.contains(where: AudioReplayController.isAudio)
+    }
+
+    func startReplay() {
+        guard replay == nil else { return }
+        stopRecordingIfNeeded()
+        let recordings = TimedRecording.all(in: note)
+        guard !recordings.isEmpty else {
+            showToast("ما فيه تسجيلات صوتية في هذه المذكرة — سجّل وأنت تكتب أولاً")
+            return
+        }
+        let controller = AudioReplayController(recordings: recordings)
+        controller.onTimeChanged = { [weak self] date in self?.canvasView?.highlightReplay(at: date) }
+        replay = controller
+        canvasView?.setReplayMode(true)
+    }
+
+    func stopReplay() {
+        guard let replay else { return }
+        replay.stop()
+        self.replay = nil
+        canvasView?.setReplayMode(false)
+    }
+
+    private func replayTapped(at date: Date) {
+        guard let replay else { return }
+        if !replay.play(at: date) {
+            showToast("هذه الكتابة ما انكتبت أثناء أي تسجيل")
+        }
+    }
+
     // MARK: - التسجيل الصوتي
 
     func toggleRecording() {
+        if !isRecording { stopReplay() }
         if isRecording {
             guard let result = recorder.stop() else {
                 isRecording = false

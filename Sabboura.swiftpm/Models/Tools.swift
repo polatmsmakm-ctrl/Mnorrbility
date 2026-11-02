@@ -11,6 +11,8 @@ enum ToolKind: String, CaseIterable, Codable, Identifiable {
     case monoline
     case crayon
     case watercolor
+    /// قلم القصب للخط العربي (أداة أبل الجديدة في iPadOS 26؛ قلم الريشة في الأنظمة الأقدم)
+    case reed
     case eraser
     case lasso
     case text
@@ -21,9 +23,17 @@ enum ToolKind: String, CaseIterable, Codable, Identifiable {
 
     var id: String { rawValue }
 
-    static let inkKinds: [ToolKind] = [.pen, .pencil, .fountainPen, .monoline, .marker, .crayon, .watercolor]
+    static let inkKinds: [ToolKind] = [.pen, .pencil, .fountainPen, .reed, .monoline, .marker, .crayon, .watercolor]
     /// أقلام إضافية تظهر في قائمة «المزيد» بشريط الأدوات
-    static let extraInkKinds: [ToolKind] = [.fountainPen, .monoline, .crayon, .watercolor]
+    static let extraInkKinds: [ToolKind] = [.reed, .fountainPen, .monoline, .crayon, .watercolor]
+
+    /// قلم القصب الحقيقي متاح؟ (iPadOS / iOS 26 وما بعده)
+    static var hasNativeReed: Bool {
+        #if compiler(>=6.2)
+        if #available(iOS 26.0, *) { return true }
+        #endif
+        return false
+    }
 
     var isInk: Bool { inkType != nil }
 
@@ -36,6 +46,7 @@ enum ToolKind: String, CaseIterable, Codable, Identifiable {
         case .monoline: return "قلم خط ثابت"
         case .crayon: return "قلم شمع"
         case .watercolor: return "ألوان مائية"
+        case .reed: return "قلم القصب (خط عربي)"
         case .eraser: return "الممحاة"
         case .lasso: return "التحديد الحر"
         case .text: return "النص والصور"
@@ -53,6 +64,7 @@ enum ToolKind: String, CaseIterable, Codable, Identifiable {
         case .monoline: return "line.diagonal"
         case .crayon: return "scribble.variable"
         case .watercolor: return "paintbrush"
+        case .reed: return "paintbrush.pointed"
         case .eraser: return "eraser"
         case .lasso: return "lasso"
         case .text: return "textformat"
@@ -70,6 +82,11 @@ enum ToolKind: String, CaseIterable, Codable, Identifiable {
         case .monoline: return .monoline
         case .crayon: return .crayon
         case .watercolor: return .watercolor
+        case .reed:
+            #if compiler(>=6.2)
+            if #available(iOS 26.0, *) { return .reed }
+            #endif
+            return .fountainPen
         case .eraser, .lasso, .text, .tidy, .laser: return nil
         }
     }
@@ -83,6 +100,7 @@ enum ToolKind: String, CaseIterable, Codable, Identifiable {
         case .monoline: return 0.5...16
         case .crayon: return 3...30
         case .watercolor: return 4...40
+        case .reed: return 2...30
         case .eraser: return 4...80
         case .lasso, .text, .tidy: return 1...2
         case .laser: return 6...30
@@ -98,6 +116,7 @@ enum ToolKind: String, CaseIterable, Codable, Identifiable {
         case .monoline: return 2
         case .crayon: return 10
         case .watercolor: return 16
+        case .reed: return 8
         case .eraser: return 20
         case .lasso, .text, .tidy: return 1
         case .laser: return 12

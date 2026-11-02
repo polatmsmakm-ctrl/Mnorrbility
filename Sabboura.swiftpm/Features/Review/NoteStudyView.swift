@@ -212,6 +212,11 @@ private struct FlashcardsView: View {
     /// نصف القلبة: البطاقة تنضغط أفقياً ثم تنفتح بالوجه الآخر (بدون نص معكوس)
     @State private var turning = false
     @State private var onlyUnknown = false
+    /// المراجعة المتباعدة: البطاقات المستحقة اليوم فقط
+    @State private var onlyDue = false
+    @State private var dueCount = 0
+
+    private let srs = SpacedRepetitionStore.shared
 
     private var cards: [StudyCard] {
         let lookup = Dictionary(uniqueKeysWithValues: set.cards.map { ($0.id, $0) })
@@ -238,10 +243,17 @@ private struct FlashcardsView: View {
     }
 
     private func reset() {
-        let source = onlyUnknown ? set.cards.filter { $0.known != true } : set.cards
+        var source = onlyUnknown ? set.cards.filter { $0.known != true } : set.cards
+        if onlyDue, let id = note.uuid { source = srs.dueCards(source, in: id) }
         order = source.map(\.id)
         position = 0
         flipped = false
+        refreshDue()
+    }
+
+    private func refreshDue() {
+        guard let id = note.uuid else { return }
+        dueCount = srs.dueCards(set.cards, in: id).count
     }
 
     private var progress: some View {
@@ -254,6 +266,16 @@ private struct FlashcardsView: View {
             Label("عرفت \(known)", systemImage: "checkmark.circle.fill")
                 .font(.inter(.subheadline))
                 .foregroundStyle(.green)
+            Button {
+                onlyDue.toggle()
+                onlyUnknown = false
+                reset()
+            } label: {
+                Label(onlyDue ? "كل البطاقات" : "مستحقة اليوم \(dueCount)",
+                      systemImage: onlyDue ? "rectangle.stack" : "calendar.badge.clock")
+                    .font(.inter(.subheadline, weight: .semibold))
+            }
+            .accessibilityIdentifier("cardsDueToggle")
             Button {
                 order.shuffle()
                 position = 0
@@ -357,6 +379,10 @@ private struct FlashcardsView: View {
     private func mark(_ known: Bool) {
         guard position < cards.count else { return }
         let id = cards[position].id
+        if let noteID = note.uuid {
+            srs.review(cards[position], in: noteID, known: known)
+            refreshDue()
+        }
         StudyService.shared.update(note) { set in
             if let index = set.cards.firstIndex(where: { $0.id == id }) {
                 set.cards[index].known = known
@@ -379,6 +405,22 @@ private struct FlashcardsView: View {
                 .font(.inter(.title2, weight: .bold))
                 .foregroundStyle(theme.primaryText)
                 .accessibilityIdentifier("cardsFinished")
+            if let noteID = note.uuid {
+                if dueCount > 0 && !onlyDue {
+                    Button {
+                        onlyDue = true
+                        onlyUnknown = false
+                        reset()
+                    } label: {
+                        Label("راجع المستحقة اليوم (\(dueCount))", systemImage: "calendar.badge.clock")
+                    }
+                    .buttonStyle(.borderedProminent)
+                } else if let next = srs.nextDue(set.cards, in: noteID) {
+                    Label("المراجعة القادمة \(next.arabicRelativeDay)", systemImage: "calendar")
+                        .font(.inter(.subheadline))
+                        .foregroundStyle(theme.secondaryText)
+                }
+            }
             if unknown > 0 {
                 Button {
                     onlyUnknown = true
@@ -390,6 +432,7 @@ private struct FlashcardsView: View {
             }
             Button {
                 onlyUnknown = false
+                onlyDue = false
                 StudyService.shared.update(note) { set in
                     for index in set.cards.indices { set.cards[index].known = nil }
                 }

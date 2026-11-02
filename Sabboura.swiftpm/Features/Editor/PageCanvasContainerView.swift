@@ -20,6 +20,12 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
     var onVisiblePageChanged: ((Int) -> Void)?
     /// رسالة قصيرة للمستخدم (ترتيب الخط)
     var onMessage: ((String) -> Void)?
+    /// تحويل الكتابة المحددة لنص: صورة الكتابة على خلفية بيضاء وإطارها بإحداثيات اللوحة
+    var onConvertSelectionToText: ((UIImage, CGRect) -> Void)?
+    /// حل المسألة المحددة
+    var onSolveSelection: ((UIImage, CGRect) -> Void)?
+    /// وضع الاستماع: ضغطة على خط مكتوب ترجع وقت كتابته
+    var onReplayTap: ((Date) -> Void)?
 
     /// مساحة أعلى اللوحة لشريط الأدوات العائم، وأسفلها لمؤشر الصفحات.
     var topInset: CGFloat = 0 {
@@ -80,6 +86,12 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
     private let holdObserver = StrokeHoldObserver(target: nil, action: nil)
     private var lastStrokeCount = 0
     private var isReplacing = false
+
+    // MARK: وضع الاستماع (ربط التسجيل بالكتابة)
+    private let replayTap = UITapGestureRecognizer()
+    private let replayLayer = CAShapeLayer()
+    private var replayHighlightDate: Date?
+    private(set) var isReplayMode = false
     private var smartShapes = true
     private var tidyOptions = TidyOptions()
 
@@ -130,6 +142,15 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
         canvas.layer.addSublayer(lassoLayer)
 
         canvas.addGestureRecognizer(holdObserver)
+
+        replayLayer.fillColor = UIColor.systemYellow.withAlphaComponent(0.32).cgColor
+        replayLayer.strokeColor = UIColor.systemOrange.withAlphaComponent(0.7).cgColor
+        replayLayer.lineWidth = 1
+        replayLayer.zPosition = 999
+        canvas.layer.addSublayer(replayLayer)
+        replayTap.addTarget(self, action: #selector(handleReplayTap(_:)))
+        replayTap.isEnabled = false
+        canvas.addGestureRecognizer(replayTap)
 
         selectionPan.addTarget(self, action: #selector(handleSelectionPan(_:)))
         panDelegate.shouldBegin = { [weak self] gesture in self?.selectionPanShouldBegin(gesture) ?? false }
@@ -267,6 +288,7 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
         if !areaMode && !textMode && !laserMode {
             canvas.tool = state.tools.makePKTool()
         }
+        if isReplayMode { disableEditingForReplay() }
     }
 
     private func setAreaEraseActive(_ active: Bool, laser: Bool = false, allowFinger: Bool) {
@@ -505,6 +527,7 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
     func scrollViewDidZoom(_ scrollView: UIScrollView) {
         syncGeometry()
         layoutSelectionUI()
+        updateReplayHighlight()
     }
 
     func scrollViewDidEndZooming(_ scrollView: UIScrollView, with view: UIView?, atScale scale: CGFloat) {
@@ -838,6 +861,8 @@ extension PageCanvasContainerView {
             .init(title: "نسخ", symbol: "doc.on.doc") { [weak self] in self?.copySelection() },
             .init(title: "قص", symbol: "scissors") { [weak self] in self?.cutSelection() },
             .init(title: "تكرار", symbol: "plus.square.on.square") { [weak self] in self?.duplicateSelection() },
+            .init(title: "نص", symbol: "character.textbox") { [weak self] in self?.convertSelectionToText() },
+            .init(title: "حل", symbol: "function") { [weak self] in self?.solveSelection() },
             .init(title: "حذف", symbol: "trash", destructive: true) { [weak self] in self?.deleteSelection() }
         ])
         selectionBar.isHidden = false
@@ -1017,5 +1042,133 @@ extension PageCanvasContainerView {
             return moved
         }
         beginSelection(strokes: strokes, rest: canvas.drawing.strokes, isNew: true)
+    }
+}
+
+
+// MARK: - الذكاء: تحويل الكتابة لنص وحل المسائل، ووضع الاستماع
+
+extension PageCanvasContainerView {
+    /// صورة الكتابة المحددة بحبر داكن على خلفية بيضاء (للتعرّف على النص وللمحرّك)، مع إطارها.
+    private func selectionSnapshot() -> (image: UIImage, rect: CGRect)? {
+        guard let sel = selection else { return nil }
+        let drawing = PKDrawing(strokes: movedStrokes(of: sel))
+        let bounds = drawing.bounds.insetBy(dx: -16, dy: -16)
+        guard bounds.width > 4, bounds.height > 4 else { return nil }
+        let scale = min(3, 2400 / max(bounds.width, bounds.height))
+        var result: UIImage?
+        UITraitCollection(userInterfaceStyle: .light).performAsCurrent {
+            let ink = drawing.image(from: bounds, scale: scale)
+            let format = UIGraphicsImageRendererFormat()
+            format.scale = scale
+            format.opaque = true
+            result = UIGraphicsImageRenderer(size: bounds.size, format: format).image { context in
+                UIColor.white.setFill()
+                context.fill(CGRect(origin: .zero, size: bounds.size))
+                ink.draw(in: CGRect(origin: .zero, size: bounds.size))
+            }
+        }
+        guard let result else { return nil }
+        return (result, bounds)
+    }
+
+    fileprivate func convertSelectionToText() {
+        guard let snapshot = selectionSnapshot() else { return }
+        onConvertSelectionToText?(snapshot.image, snapshot.rect)
+    }
+
+    fileprivate func solveSelection() {
+        guard let snapshot = selectionSnapshot() else { return }
+        commitSelection()
+        onSolveSelection?(snapshot.image, snapshot.rect)
+    }
+
+    /// يحذف الكتابة المحددة بعد تحويلها لنص (خطوة تراجع واحدة).
+    func removeSelectedStrokes() {
+        guard selection != nil else { return }
+        deleteSelection()
+    }
+
+    // MARK: وضع الاستماع
+
+    func setReplayMode(_ on: Bool) {
+        guard on != isReplayMode else { return }
+        isReplayMode = on
+        replayTap.isEnabled = on
+        if on {
+            commitSelection()
+            disableEditingForReplay()
+            onMessage?("اضغط على أي كلمة كتبتها أثناء التسجيل لتسمع ما قيل وقتها")
+        } else {
+            replayHighlightDate = nil
+            replayLayer.path = nil
+            replayTap.isEnabled = false
+            // نعيد تطبيق الأداة الحالية كما هي (الرسم والتحديد والليزر)
+            if let state = appliedState {
+                appliedState = nil
+                apply(state)
+            }
+        }
+    }
+
+    fileprivate func disableEditingForReplay() {
+        canvas.drawingGestureRecognizer.isEnabled = false
+        areaGesture.isEnabled = false
+        laserGesture.isEnabled = false
+        lassoLayer.path = nil
+        itemsOverlay.isEditingEnabled = false
+        // التمرير بإصبع واحد في وضع الاستماع
+        if let saved = savedPanMinimumTouches {
+            canvas.panGestureRecognizer.minimumNumberOfTouches = saved
+            savedPanMinimumTouches = nil
+        }
+    }
+
+    private func nearestStroke(to point: CGPoint, tolerance: CGFloat) -> PKStroke? {
+        let strokes = canvas.drawing.strokes
+        for index in strokes.indices.reversed()
+        where Self.stroke(strokes[index], passesNear: point, tolerance: tolerance) {
+            return strokes[index]
+        }
+        return nil
+    }
+
+    @objc fileprivate func handleReplayTap(_ gesture: UITapGestureRecognizer) {
+        guard isReplayMode, gesture.state == .ended else { return }
+        let zoom = max(canvas.zoomScale, 0.0001)
+        let location = gesture.location(in: canvas)
+        let point = CGPoint(x: location.x / zoom, y: location.y / zoom)
+        guard let stroke = nearestStroke(to: point, tolerance: 16 / zoom) else {
+            onMessage?("اضغط على كلمة مكتوبة")
+            return
+        }
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        onReplayTap?(stroke.path.creationDate)
+    }
+
+    /// يظلّل الكلمات التي كُتبت في الثواني الأخيرة قبل لحظة التشغيل الحالية.
+    func highlightReplay(at date: Date?) {
+        replayHighlightDate = date
+        updateReplayHighlight()
+    }
+
+    fileprivate func updateReplayHighlight() {
+        guard isReplayMode, let date = replayHighlightDate else {
+            replayLayer.path = nil
+            return
+        }
+        let zoom = max(canvas.zoomScale, 0.0001)
+        let path = UIBezierPath()
+        for stroke in canvas.drawing.strokes {
+            let age = date.timeIntervalSince(stroke.path.creationDate)
+            guard age >= 0, age <= 3 else { continue }
+            let box = stroke.renderBounds.insetBy(dx: -4, dy: -4)
+            let scaled = CGRect(x: box.minX * zoom, y: box.minY * zoom, width: box.width * zoom, height: box.height * zoom)
+            path.append(UIBezierPath(roundedRect: scaled, cornerRadius: 6))
+        }
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        replayLayer.path = path.isEmpty ? nil : path.cgPath
+        CATransaction.commit()
     }
 }

@@ -26,6 +26,7 @@ struct EditorView: View {
     @State private var renameText = ""
     @State private var confirmDeletePage = false
     @State private var showStudy = false
+    @State private var showChat = false
 
     init(note: CDNote) {
         self.note = note
@@ -162,6 +163,23 @@ struct EditorView: View {
         .sheet(isPresented: $showStudy) {
             NoteStudyView(note: note)
         }
+        .sheet(isPresented: $showChat) {
+            NoteChatView(note: note)
+        }
+        .sheet(item: $controller.mathProblem) { problem in
+            MathSolverView(problem: problem) { answer in
+                controller.insertSolution(answer, below: problem.canvasRect)
+            }
+        }
+        .overlay(alignment: .bottom) {
+            if let replay = controller.replay {
+                ReplayBar(replay: replay, onClose: { controller.stopReplay() })
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 18)
+                    .frame(maxWidth: 560)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
         .onAppear {
             appState.noteDebug("editor appear")
             appState.hideStatusBar = !controller.showStatusBar
@@ -176,6 +194,7 @@ struct EditorView: View {
             appState.noteDebug("editor disappear")
             appState.hideStatusBar = false
             controller.stopRecordingIfNeeded()
+            controller.stopReplay()
             controller.flush()
             EditorActivity.setOpen(note.objectID, false)
             // المذكرة تغيّرت؟ نجهّز بطاقات الحفظ والكويز في الخلفية
@@ -365,6 +384,28 @@ struct EditorView: View {
                 appState.showStudySetup = true
             } label: {
                 Label("جلسة مذاكرة", systemImage: "timer")
+            }
+            Divider()
+            Button {
+                controller.flush()
+                showChat = true
+            } label: {
+                Label("اسأل مذكرتك", systemImage: "bubble.left.and.text.bubble.right")
+            }
+            .accessibilityIdentifier("askNote")
+            if controller.replay != nil {
+                Button {
+                    controller.stopReplay()
+                } label: {
+                    Label("إنهاء وضع الاستماع", systemImage: "speaker.slash")
+                }
+            } else if controller.hasRecordings {
+                Button {
+                    controller.startReplay()
+                } label: {
+                    Label("استمع للتسجيل مع الكتابة", systemImage: "waveform.and.magnifyingglass")
+                }
+                .accessibilityIdentifier("startReplay")
             }
             if !isPad {
                 Divider()
@@ -643,5 +684,77 @@ struct CameraPicker: UIViewControllerRepresentable {
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
             parent.onClose()
         }
+    }
+}
+
+
+// MARK: - شريط وضع الاستماع
+
+/// تشغيل التسجيل المربوط بالكتابة: الكلمات التي قيلت الآن تتظلل، وضغطة على أي كلمة تقفز لوقتها.
+struct ReplayBar: View {
+    @ObservedObject var replay: AudioReplayController
+    let onClose: () -> Void
+    @Environment(\.appTheme) private var theme
+
+    var body: some View {
+        VStack(spacing: 8) {
+            HStack(spacing: 12) {
+                Button { replay.skip(-10) } label: {
+                    Image(systemName: "gobackward.10")
+                }
+                .disabled(replay.current == nil)
+                Button { replay.togglePlay() } label: {
+                    Image(systemName: replay.isPlaying ? "pause.circle.fill" : "play.circle.fill")
+                        .font(.system(size: 34))
+                }
+                .accessibilityIdentifier("replayPlay")
+                Button { replay.skip(10) } label: {
+                    Image(systemName: "goforward.10")
+                }
+                .disabled(replay.current == nil)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(replay.current?.name ?? "اضغط على كلمة مكتوبة")
+                        .font(.inter(.subheadline, weight: .semibold))
+                        .lineLimit(1)
+                    Text(replay.current == nil
+                         ? "\(replay.recordings.count) تسجيل مربوط بالكتابة"
+                         : "\(replay.currentTime.clockText) / \(replay.duration.clockText)")
+                        .font(.inter(.caption, monospacedDigits: true))
+                        .foregroundStyle(theme.secondaryText)
+                }
+                Spacer(minLength: 0)
+                if replay.recordings.count > 1 {
+                    Menu {
+                        ForEach(replay.recordings) { recording in
+                            Button(recording.name) { replay.play(recording) }
+                        }
+                    } label: {
+                        Image(systemName: "list.bullet")
+                    }
+                }
+                Button(action: onClose) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 22))
+                        .foregroundStyle(theme.secondaryText)
+                }
+                .accessibilityLabel("إنهاء وضع الاستماع")
+                .accessibilityIdentifier("replayClose")
+            }
+            .font(.system(size: 20, weight: .medium))
+            .foregroundStyle(theme.primaryText)
+            if replay.current != nil {
+                Slider(value: Binding(get: { replay.currentTime },
+                                      set: { replay.seek(to: $0) }),
+                       in: 0...max(replay.duration, 0.1))
+                    .tint(theme.accent)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(theme.toolbar, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(theme.border, lineWidth: 1))
+        .shadow(color: .black.opacity(0.18), radius: 10, y: 4)
+        .environment(\.layoutDirection, .rightToLeft)
+        .accessibilityIdentifier("replayBar")
     }
 }
