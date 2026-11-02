@@ -312,27 +312,57 @@ struct PadEditorLayer: View {
     @EnvironmentObject private var appState: AppState
     @Environment(\.appTheme) private var theme
 
+    /// المذكرة المعروضة الآن (تبقى لحظة بعد الإغلاق حتى تنتهي حركة التلاشي)
+    @State private var shown: CDNote?
+    @State private var visible = false
+    @State private var closeWork: DispatchWorkItem?
+
+    private static let fadeDuration = 0.24
+
     var body: some View {
         ZStack {
-            if let note = appState.path.last, note.isAlive {
+            if let note = shown, note.isAlive {
                 EditorView(note: note)
                     .id(note.objectID)
                     .environment(\.layoutDirection, .rightToLeft)
                     .background(theme.desk.ignoresSafeArea())
-                    .transition(.asymmetric(
-                        insertion: .opacity.combined(with: .scale(scale: 0.94)),
-                        removal: .opacity.combined(with: .scale(scale: 1.05))))
+                    .opacity(visible ? 1 : 0)
+                    .scaleEffect(visible ? 1 : 0.96)
             }
         }
-        // أثناء حركة الإغلاق تبقى المذكرة مرسومة فوق القائمة وهي تتلاشى؛ بدون هذا تلتقط اللمسات
-        // وتمنع الضغط المطوّل (قائمة المذكرة) على البطاقات تحتها
-        .allowsHitTesting(isOpen)
-        .accessibilityHidden(!isOpen)
-        .animation(.spring(response: 0.42, dampingFraction: 0.9), value: appState.path.last?.objectID)
+        // حركة الإغلاق نديرها بأنفسنا ثم نزيل المذكرة نهائياً؛ انتقالات SwiftUI كانت تعلق أحياناً
+        // فتبقى المذكرة شبه ظاهرة فوق القائمة وتلتقط اللمسات (قائمة الضغط المطوّل ما تفتح)
+        .allowsHitTesting(visible)
+        .onAppear { sync(animated: false) }
+        .onChange(of: appState.path.last?.objectID) { _, _ in sync(animated: true) }
     }
 
-    private var isOpen: Bool {
-        guard let note = appState.path.last else { return false }
-        return note.isAlive
+    private func sync(animated: Bool) {
+        let target = appState.path.last.flatMap { $0.isAlive ? $0 : nil }
+        closeWork?.cancel()
+        closeWork = nil
+        if let target {
+            let isNew = shown?.objectID != target.objectID
+            shown = target
+            if isNew && animated {
+                visible = false
+                DispatchQueue.main.async {
+                    withAnimation(.spring(response: 0.42, dampingFraction: 0.9)) { visible = true }
+                }
+            } else {
+                visible = true
+            }
+        } else {
+            guard shown != nil else { return }
+            if animated {
+                withAnimation(.easeOut(duration: Self.fadeDuration)) { visible = false }
+                let work = DispatchWorkItem { shown = nil }
+                closeWork = work
+                DispatchQueue.main.asyncAfter(deadline: .now() + Self.fadeDuration + 0.05, execute: work)
+            } else {
+                visible = false
+                shown = nil
+            }
+        }
     }
 }
