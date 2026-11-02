@@ -512,6 +512,44 @@ final class SabbouraUITests: XCTestCase {
 
     // MARK: - أدوات مساعدة
 
+    /// الميزات الذكية: أزرار «نص» و«حل» في شريط التحديد، نافذة حل المسألة، و«اسأل مذكرتك».
+    func test9_SmartFeatures() {
+        launch(reset: true, extra: ["-uitest-dark"])
+        openFolder()
+        newNote()
+        let canvas = canvasElement()
+        XCTAssertTrue(canvas.waitForExistence(timeout: 10))
+        sleep(1)
+        drawLine(on: canvas, from: CGVector(dx: 0.2, dy: rowBase + 0.05), to: CGVector(dx: 0.6, dy: rowBase + 0.05))
+        sleep(1)
+
+        // التحديد بنقرة على الخط ← يظهر شريط التحديد مع «نص» و«حل»
+        tap(app.buttons["tool.lasso"], "tool.lasso")
+        canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.4, dy: rowBase + 0.05)).tap()
+        let solve = app.buttons["حل"].firstMatch
+        XCTAssertTrue(solve.waitForExistence(timeout: 5), "زر حل المسألة لم يظهر في شريط التحديد")
+        XCTAssertTrue(app.buttons["نص"].firstMatch.exists, "زر تحويل الكتابة لنص لم يظهر")
+        snap("90-selection-smart")
+        solve.tap()
+        let mathSheet = app.descendants(matching: .any)["mathSheet"].firstMatch
+        XCTAssertTrue(mathSheet.waitForExistence(timeout: 6), "نافذة حل المسألة لم تفتح")
+        sleep(1)
+        snap("91-math-sheet")
+        tap(app.buttons["mathClose"], "mathClose")
+        sleep(1)
+
+        // اسأل مذكرتك
+        tap(app.buttons["tool.pen"], "tool.pen")
+        openMore("اسأل مذكرتك")
+        let chat = app.descendants(matching: .any)["chatSheet"].firstMatch
+        XCTAssertTrue(chat.waitForExistence(timeout: 6), "نافذة اسأل مذكرتك لم تفتح")
+        snap("92-ask-note")
+        tap(app.buttons["chatClose"], "chatClose")
+        sleep(1)
+        XCTAssertTrue(canvas.exists, "لم يرجع للمذكرة")
+        assertAppAlive("الميزات الذكية")
+    }
+
     private func launch(reset: Bool, extra: [String] = []) {
         app = XCUIApplication()
         app.launchArguments = ["-uitest"] + (reset ? ["-uitest-reset"] : []) + extra
