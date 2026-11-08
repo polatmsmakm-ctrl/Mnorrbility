@@ -1,5 +1,6 @@
 import CoreData
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// الرئيسية: اختصارات سريعة، آخر الملاحظات، المفضلة، والمجلدات.
 struct HomeView: View {
@@ -13,7 +14,6 @@ struct HomeView: View {
     @FetchRequest(fetchRequest: CDSubject.sortedRequest(), animation: .default)
     private var folders: FetchedResults<CDSubject>
 
-    @State private var showPDFImporter = false
 
     private var recent: [CDNote] {
         Array(notes.filter(\.isAlive)
@@ -100,7 +100,10 @@ struct HomeView: View {
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(theme.background, for: .navigationBar)
-        .fileImporter(isPresented: $showPDFImporter, allowedContentTypes: [.pdf], allowsMultipleSelection: false) { result in
+    }
+
+    private func presentPDFImporter() {
+        DocumentPickerPresenter.present(types: [.pdf], allowsMultiple: false) { result in
             guard let file = FileImportReader.read(result).first,
                   let note = DataStore.createNote(fromPDF: file.data, fileName: file.name, in: nil, context: context) else { return }
             appState.select(.notes)
@@ -118,7 +121,7 @@ struct HomeView: View {
                     appState.path.append(note)
                 }
                 actionTile("استيراد PDF", symbol: "doc.richtext", color: .orange, id: "home.importPDF") {
-                    showPDFImporter = true
+                    presentPDFImporter()
                 }
                 actionTile("جلسة مذاكرة", symbol: "timer", color: .green, id: "home.study") {
                     appState.showStudySetup = true

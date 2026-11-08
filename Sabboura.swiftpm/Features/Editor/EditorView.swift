@@ -13,7 +13,6 @@ struct EditorView: View {
     /// ماذا نفعل بالملفات المختارة من تطبيق الملفات
     private enum FileImportMode { case pdfPages, attachment, images }
 
-    @State private var showFileImporter = false
     @State private var fileImportMode: FileImportMode = .attachment
     @State private var pendingFiles: [ImportedFile] = []
     @State private var showImportChoice = false
@@ -64,11 +63,6 @@ struct EditorView: View {
         .background(theme.desk.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
         .navigationBarBackButtonHidden(true)
-        .fileImporter(isPresented: $showFileImporter,
-                      allowedContentTypes: allowedImportTypes,
-                      allowsMultipleSelection: true) { result in
-            handleImport(result)
-        }
         .photosPicker(isPresented: $showPhotoPicker, selection: $photoItems, maxSelectionCount: 10,
                       matching: .images)
         .onChange(of: photoItems) { _, items in
@@ -456,17 +450,25 @@ struct EditorView: View {
 
     private func importPDF() {
         fileImportMode = .pdfPages
-        showFileImporter = true
+        presentFileImporter()
     }
 
     private func importFile() {
         fileImportMode = .attachment
-        showFileImporter = true
+        presentFileImporter()
     }
 
     private func imageFromFiles() {
         fileImportMode = .images
-        showFileImporter = true
+        presentFileImporter()
+    }
+
+    /// نافذة الملفات بطريقة UIKit (لا تتعارض مع نوافذ الاستيراد في الشاشات الأخرى)
+    private func presentFileImporter() {
+        let types = allowedImportTypes
+        DocumentPickerPresenter.present(types: types, allowsMultiple: true) { result in
+            handleImport(result)
+        }
     }
 
     private func takePhoto() {

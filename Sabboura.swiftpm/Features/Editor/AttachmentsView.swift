@@ -9,8 +9,15 @@ struct AttachmentsView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var previewURL: URL? = nil
-    @State private var showImporter = false
     @State private var pendingDelete: CDAttachment? = nil
+
+    private func presentImporter() {
+        DocumentPickerPresenter.present(types: [.item], allowsMultiple: true) { result in
+            let files = FileImportReader.read(result)
+            guard !files.isEmpty else { return }
+            controller.importFiles(files, asPages: false)
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -21,7 +28,7 @@ struct AttachmentsView: View {
                     } description: {
                         Text("أرفق ملفات PDF أو صوراً أو مستندات Word وغيرها لتبقى مع هذه المذكرة.")
                     } actions: {
-                        Button("إرفاق ملف") { showImporter = true }
+                        Button("إرفاق ملف") { presentImporter() }
                             .buttonStyle(.borderedProminent)
                     }
                 } else {
@@ -64,17 +71,11 @@ struct AttachmentsView: View {
                         }
                     }
                     Button {
-                        showImporter = true
+                        presentImporter()
                     } label: {
                         Label("إرفاق", systemImage: "plus")
                     }
                 }
-            }
-            .fileImporter(isPresented: $showImporter,
-                          allowedContentTypes: [.item],
-                          allowsMultipleSelection: true) { result in
-                let files = FileImportReader.read(result)
-                controller.importFiles(files, asPages: false)
             }
             .confirmationDialog("حذف المرفق؟",
                                 isPresented: Binding(get: { pendingDelete != nil },

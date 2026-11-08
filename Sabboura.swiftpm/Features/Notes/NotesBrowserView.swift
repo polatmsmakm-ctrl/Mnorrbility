@@ -43,7 +43,6 @@ struct NotesBrowserView: View {
     @State private var renameTarget: CDNote? = nil
     @State private var renameText = ""
     @State private var trashTarget: [CDNote] = []
-    @State private var showPDFImporter = false
     @State private var folderSheet: SubjectSheetTarget? = nil
     @State private var confirmDeleteFolder = false
     @State private var studyNote: StudyTarget? = nil
@@ -128,9 +127,6 @@ struct NotesBrowserView: View {
         .toolbar { toolbarContent }
         .safeAreaInset(edge: .bottom) {
             if isSelecting { selectionBar }
-        }
-        .fileImporter(isPresented: $showPDFImporter, allowedContentTypes: [.pdf], allowsMultipleSelection: false) { result in
-            importPDF(result)
         }
         .alert("إعادة تسمية المذكرة",
                isPresented: Binding(get: { renameTarget != nil }, set: { if !$0 { renameTarget = nil } })) {
@@ -256,7 +252,7 @@ struct NotesBrowserView: View {
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("emptyNewNote")
                 Button {
-                    showPDFImporter = true
+                    presentPDFImporter()
                 } label: {
                     Label("فتح ملف PDF", systemImage: "doc.richtext")
                         .font(.system(size: 17, weight: .semibold))
@@ -348,7 +344,7 @@ struct NotesBrowserView: View {
                 Label("مذكرة جديدة", systemImage: "square.and.pencil")
             }
             Button {
-                showPDFImporter = true
+                presentPDFImporter()
             } label: {
                 Label("استيراد PDF والكتابة عليه", systemImage: "doc.richtext")
             }
@@ -488,6 +484,12 @@ struct NotesBrowserView: View {
         let target = folder?.isAlive == true ? folder : nil
         let note = DataStore.createNote(in: target, title: DataStore.defaultNoteTitle(), context: context)
         appState.openAfterMenu(note)
+    }
+
+    private func presentPDFImporter() {
+        DocumentPickerPresenter.present(types: [.pdf], allowsMultiple: false) { result in
+            importPDF(result)
+        }
     }
 
     private func importPDF(_ result: Result<[URL], Error>) {
