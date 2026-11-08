@@ -11,6 +11,8 @@ final class PrintedSelectionController: NSObject, UIGestureRecognizerDelegate, U
         case copyImage
         /// يرفع نسخة من المحتوى كعنصر يُسحب لأي مكان
         case lift
+        /// Gemini: ترجمة، شرح معادلة، تحويل إلى LaTeX
+        case ai(PrintedAITask)
     }
 
     /// يحوّل مسار اللاسو (إحداثيات اللوحة بدون تكبير) إلى منطقة مطبوعة، أو nil إن لم يكن تحته محتوى مطبوع.
@@ -141,7 +143,13 @@ final class PrintedSelectionController: NSObject, UIGestureRecognizerDelegate, U
                             image: UIImage(systemName: "arrow.up.and.down.and.arrow.left.and.right")) { [weak self] _ in
             self?.onAction?(.lift, current)
         }
-        return UIMenu(children: [copySmart, copyText, copyImage, lift])
+        let aiActions = [PrintedAITask.translate, .explain, .latex].map { task in
+            UIAction(title: task.menuTitle, image: UIImage(systemName: task.symbol)) { [weak self] _ in
+                self?.onAction?(.ai(task), current)
+            }
+        }
+        let ai = UIMenu(title: "Gemini", image: UIImage(systemName: "sparkles"), children: aiActions)
+        return UIMenu(children: [copySmart, copyText, copyImage, lift, ai])
     }
 
     func editMenuInteraction(_ interaction: UIEditMenuInteraction,

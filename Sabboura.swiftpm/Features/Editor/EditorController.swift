@@ -65,6 +65,8 @@ final class EditorController: ObservableObject {
     @Published var activePopover: EditorPopover? = nil
     @Published var showClearConfirmation = false
     @Published var editingItem: ItemEditTarget? = nil
+    /// طلب Gemini على مقتطف مطبوع (ترجمة، شرح، LaTeX) — يفتح نافذة النتيجة
+    @Published var printedAIRequest: PrintedAIRequest? = nil
     /// رقم دائرة اللون التي يُعاد تخصيصها (ضغط مطوّل)
     @Published var editingSwatchIndex: Int? = nil
 

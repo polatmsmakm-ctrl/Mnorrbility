@@ -141,6 +141,9 @@ struct EditorView: View {
         .sheet(item: $controller.editingItem) { target in
             ItemEditorSheet(target: target, controller: controller)
         }
+        .sheet(item: $controller.printedAIRequest) { request in
+            PrintedAISheet(request: request, controller: controller)
+        }
         .sheet(isPresented: $showStudy) {
             NoteStudyView(note: note)
         }

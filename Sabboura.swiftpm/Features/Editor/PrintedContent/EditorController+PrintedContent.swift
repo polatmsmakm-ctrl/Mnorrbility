@@ -114,6 +114,12 @@ extension EditorController {
                     self.showToast("اسحب المقتطف لأي مكان — حتى لصفحة ثانية")
                 }
             }
+        case .ai(let task):
+            service.prepareAIRequest(region, task: task) { [weak self] request in
+                guard let self else { return }
+                guard let request else { return self.showToast("تعذّر تجهيز التحديد") }
+                self.printedAIRequest = request
+            }
         }
     }
 
@@ -155,17 +161,45 @@ extension EditorController {
         let board = UIPasteboard.general
         guard board.hasStrings, let raw = board.string else { return false }
         let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, note.isAlive, let view = canvasView, !layout.isEmpty else { return false }
+        guard !text.isEmpty, insertTextItem(text, actionName: "لصق نص") else { return false }
+        showToast("لُصق النص — اضغط عليه لتعديله")
+        return true
+    }
+
+    /// يدرج نتيجة Gemini (ترجمة أو شرح) كمربع نص أسفل المقتطف الأصلي.
+    func insertPrintedAIResult(_ text: String, for request: PrintedAIRequest) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        // نزيل علامات الخط العريض لأن مربع النص يعرض نصاً عادياً
+        let plain = trimmed.replacingOccurrences(of: "**", with: "")
+        let actionName = request.task == .translate ? "إدراج الترجمة" : "إدراج الشرح"
+        if insertTextItem(plain, actionName: actionName, pageID: request.pageID, below: request.anchor) {
+            showToast("أُضيف النص تحت التحديد — اضغط عليه لتعديله")
+        }
+    }
+
+    /// يضيف مربع نص: تحت مستطيل معيّن في صفحة معيّنة إن اتسع المكان، وإلا في وسط الجزء الظاهر.
+    @discardableResult
+    private func insertTextItem(_ text: String, actionName: String,
+                                pageID: UUID? = nil, below anchor: CGRect? = nil) -> Bool {
+        guard note.isAlive, let view = canvasView, !layout.isEmpty else { return false }
         let center = view.visibleContentCenter
-        let index = layoutIndex(forY: center.y)
+        var index = layoutIndex(forY: center.y)
+        if let pageID, let anchored = layout.firstIndex(where: { $0.id == pageID }) {
+            index = anchored
+        }
         guard layout.indices.contains(index), layoutPages.indices.contains(index) else { return false }
         let info = layout[index]
         let page = layoutPages[index]
         guard page.isAlive else { return false }
 
         let width = max(160, min(560, info.size.width - 48))
-        let x = min(max(center.x - width / 2, 24), max(24, info.size.width - width - 24))
-        let y = min(max(center.y - info.originY, 24), max(24, info.size.height - 80))
+        var x = min(max(center.x - width / 2, 24), max(24, info.size.width - width - 24))
+        var y = min(max(center.y - info.originY, 24), max(24, info.size.height - 80))
+        if let anchor, pageID != nil {
+            x = min(max(anchor.minX, 24), max(24, info.size.width - width - 24))
+            y = min(anchor.maxY + 12, max(24, info.size.height - 80))
+        }
         var item = PageItem.newText(at: CGPoint(x: x, y: y), pageWidth: info.size.width,
                                     colorHex: tools.color(for: tools.lastInkKind))
         item.width = Double(width)
@@ -177,9 +211,8 @@ extension EditorController {
 
         let before = [(page, page.items)]
         page.items = page.items + [item]
-        commitItemChange(before, actionName: "لصق نص")
+        commitItemChange(before, actionName: actionName)
         selectInsertedItem(item.id)
-        showToast("لُصق النص — اضغط عليه لتعديله")
         return true
     }
 

@@ -45,6 +45,34 @@ final class PrintedContentService {
         }
     }
 
+    /// يجهّز المقتطف للإرسال إلى Gemini: صورة واضحة بحجم معقول (JPEG) ونص طبقة الـPDF إن وُجد.
+    func prepareAIRequest(_ region: PrintedRegion, task: PrintedAITask,
+                          completion: @escaping (PrintedAIRequest?) -> Void) {
+        queue.async {
+            let rect = region.rect
+            let longest = max(rect.width, rect.height, 1)
+            let scale = max(1, min(3, 1600 / longest))
+            guard let context = PrintedRegionRenderer.makeContext(for: region, rect: rect, scale: scale),
+                  let cgImage = context.makeImage() else {
+                DispatchQueue.main.async { completion(nil) }
+                return
+            }
+            let image = UIImage(cgImage: cgImage, scale: scale, orientation: .up)
+            guard let jpeg = image.jpegData(compressionQuality: 0.9) else {
+                DispatchQueue.main.async { completion(nil) }
+                return
+            }
+            let text = PrintedTextExtractor.shared.extract(from: region, image: nil, allowOCR: false)
+            let request = PrintedAIRequest(task: task,
+                                           image: image,
+                                           imageJPEG: jpeg,
+                                           text: text.map(\.text),
+                                           pageID: region.pageID,
+                                           anchor: rect)
+            DispatchQueue.main.async { completion(request) }
+        }
+    }
+
     func capture(_ region: PrintedRegion, text mode: TextMode, completion: @escaping (PrintedCapture?) -> Void) {
         queue.async {
             guard let image = PrintedRegionRenderer.captureImage(of: region),
