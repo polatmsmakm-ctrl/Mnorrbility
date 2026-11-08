@@ -42,6 +42,10 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
     private let laserView = LaserTrailView()
     private let laserGesture = LassoPathGestureRecognizer(target: nil, action: nil)
     private var laserProcessedPoints = 0
+    /// تحديد المحتوى المطبوع بأداة اللاسو: مراقب للمسار لا يتدخل في PencilKit
+    let printedSelection = PrintedSelectionController()
+    private let printedLassoGesture = LassoPathGestureRecognizer(target: nil, action: nil)
+    private var drawingChangedDuringPrintedLasso = false
 
     private var pages: [PageRenderInfo] = []
     private var contentExtent = DataStore.standardPageSize
@@ -125,6 +129,15 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
         laserView.frame = bounds
         laserView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         addSubview(laserView)
+
+        printedLassoGesture.addTarget(self, action: #selector(handlePrintedLasso(_:)))
+        printedLassoGesture.isEnabled = false
+        printedLassoGesture.cancelsTouchesInView = false
+        printedLassoGesture.delaysTouchesBegan = false
+        printedLassoGesture.delaysTouchesEnded = false
+        printedLassoGesture.delegate = printedSelection
+        canvas.addGestureRecognizer(printedLassoGesture)
+        printedSelection.install(in: self)
 
         let pencilInteraction = UIPencilInteraction()
         pencilInteraction.delegate = self
@@ -211,6 +224,7 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
         laserView.color = UIColor(hex: state.tools.color(for: .laser))
         laserView.dotSize = CGFloat(state.tools.width(for: .laser))
         setAreaEraseActive(areaMode, laser: laserMode, allowFinger: state.fingerDrawing)
+        setPrintedSelectionActive(state.tools.kind == .lasso, allowFinger: state.fingerDrawing)
         canvas.drawingGestureRecognizer.isEnabled = !(areaMode || textMode || laserMode)
         if !areaMode && !textMode && !laserMode {
             canvas.tool = state.tools.makePKTool()
@@ -415,6 +429,7 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
     // MARK: PKCanvasViewDelegate / UIScrollViewDelegate
 
     func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
+        drawingChangedDuringPrintedLasso = true
         guard !isLoading else { return }
         let count = canvas.drawing.strokes.count
         let strokeAdded = count == lastStrokeCount + 1
@@ -444,6 +459,7 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
 
     func scrollViewDidZoom(_ scrollView: UIScrollView) {
         syncGeometry()
+        printedSelection.contentDidMove()
     }
 
     func scrollViewDidEndZooming(_ scrollView: UIScrollView, with view: UIView?, atScale scale: CGFloat) {
@@ -453,6 +469,7 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
 
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
         if seamless { reportVisiblePage() }
+        printedSelection.contentDidMove()
     }
 
     // MARK: قلم أبل — النقر المزدوج
@@ -509,6 +526,47 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
         default:
             laserProcessedPoints = 0
             laserView.end()
+        }
+    }
+
+    // MARK: تحديد المحتوى المطبوع (اللاسو)
+
+    private func setPrintedSelectionActive(_ active: Bool, allowFinger: Bool) {
+        printedLassoGesture.isEnabled = active
+        var touchTypes = [NSNumber(value: UITouch.TouchType.pencil.rawValue)]
+        if allowFinger {
+            touchTypes.append(NSNumber(value: UITouch.TouchType.direct.rawValue))
+        }
+        printedLassoGesture.allowedTouchTypes = touchTypes
+        if !active {
+            printedSelection.dismiss()
+        }
+    }
+
+    /// يراقب مسار اللاسو فقط؛ تحديد الكتابة اليدوية يبقى بالكامل لـ PencilKit.
+    @objc private func handlePrintedLasso(_ gesture: LassoPathGestureRecognizer) {
+        switch gesture.state {
+        case .began:
+            drawingChangedDuringPrintedLasso = false
+            printedSelection.dismiss()
+        case .ended:
+            let zoom = max(canvas.zoomScale, 0.0001)
+            let points = gesture.points.map { CGPoint(x: $0.x / zoom, y: $0.y / zoom) }
+            guard PrintedSelectionController.isClosedLasso(points) else { return }
+            // ننتظر لحظة: إذا كان اللمس سحباً لكتابة محددة، يبلّغ PencilKit بتغيّر الرسم
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { [weak self] in
+                guard let self, !self.drawingChangedDuringPrintedLasso,
+                      self.printedLassoGesture.isEnabled else { return }
+                let lasso = Self.path(from: points, closed: true)
+                let bounds = Self.boundingRect(of: points)
+                // اللاسو حوّط كتابة يد: PencilKit يتولاها كالمعتاد
+                if self.canvas.drawing.strokes.contains(where: { Self.stroke($0, isInside: lasso, bounds: bounds) }) {
+                    return
+                }
+                self.printedSelection.handleLasso(points)
+            }
+        default:
+            break
         }
     }
 

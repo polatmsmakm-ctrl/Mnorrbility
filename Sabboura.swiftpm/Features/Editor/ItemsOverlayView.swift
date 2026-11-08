@@ -145,6 +145,12 @@ final class ItemView: UIView, UIGestureRecognizerDelegate {
     private var resizeStartFrame: CGRect = .zero
     private var aspectRatio: CGFloat = 1
     private var contentScale: CGFloat = 1
+    /// مقتطف من محتوى مطبوع: يُسحب بمسار سلس خاص به (مع التمرير التلقائي بين الصفحات)
+    private(set) var isPrintedClip = false
+    private var printedGrabOffset: CGPoint = .zero
+    private weak var printedPan: UIPanGestureRecognizer?
+    private var autoScrollLink: CADisplayLink?
+    private var autoScrollLastTimestamp: CFTimeInterval = 0
 
     var showsOutline = false {
         didSet { updateDecorations() }
@@ -222,6 +228,10 @@ final class ItemView: UIView, UIGestureRecognizerDelegate {
         aspectRatio = frame.height / max(frame.width, 1)
         accessibilityIdentifier = item.kind == .text ? "textItem" : "imageItem"
         accessibilityLabel = item.kind == .text ? item.text : "صورة"
+        isPrintedClip = item.isPrintedClip
+        if let printed = item.printedText {
+            accessibilityLabel = printed.isEmpty ? "مقتطف مطبوع" : printed
+        }
         mirror.configure(item, image: image, dark: dark)
         syncMirror()
         setNeedsLayout()
@@ -296,6 +306,10 @@ final class ItemView: UIView, UIGestureRecognizerDelegate {
     }
 
     @objc private func handlePan(_ gesture: UIPanGestureRecognizer) {
+        if isPrintedClip {
+            handlePrintedPan(gesture)
+            return
+        }
         guard let superview else { return }
         switch gesture.state {
         case .began:
@@ -310,6 +324,120 @@ final class ItemView: UIView, UIGestureRecognizerDelegate {
         default:
             break
         }
+    }
+
+    // MARK: سحب المقتطفات المطبوعة (سلس، يلتصق بالإصبع، ويمرّر الصفحات تلقائياً)
+
+    private func handlePrintedPan(_ gesture: UIPanGestureRecognizer) {
+        guard let superview else { return }
+        switch gesture.state {
+        case .began:
+            // نحفظ موضع الإصبع داخل العنصر حتى يبقى ملتصقاً بنفس النقطة طوال السحب
+            let location = gesture.location(in: superview)
+            printedGrabOffset = CGPoint(x: center.x - location.x, y: center.y - location.y)
+            printedPan = gesture
+            if let itemID { onBeganInteraction?(itemID) }
+            startAutoScroll()
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        case .changed:
+            followFinger(gesture)
+        case .ended:
+            stopAutoScroll()
+            followFinger(gesture)
+            if let itemID { onMoved?(itemID, frame) }
+        case .cancelled, .failed:
+            stopAutoScroll()
+            if let itemID { onMoved?(itemID, frame) }
+        default:
+            break
+        }
+    }
+
+    /// يضع العنصر تحت الإصبع مباشرة (بالموقع وليس بالإزاحة)، فيبقى دقيقاً مع التمرير والتكبير.
+    private func followFinger(_ gesture: UIPanGestureRecognizer) {
+        guard let superview else { return }
+        let location = gesture.location(in: superview)
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        center = CGPoint(x: location.x + printedGrabOffset.x, y: location.y + printedGrabOffset.y)
+        syncMirror()
+        CATransaction.commit()
+    }
+
+    private func enclosingScrollView() -> UIScrollView? {
+        var view = superview
+        while let current = view {
+            if let scroll = current as? UIScrollView { return scroll }
+            view = current.superview
+        }
+        return nil
+    }
+
+    private func startAutoScroll() {
+        stopAutoScroll()
+        let link = CADisplayLink(target: self, selector: #selector(autoScrollStep(_:)))
+        link.preferredFrameRateRange = CAFrameRateRange(minimum: 60, maximum: 120, preferred: 120)
+        link.add(to: .main, forMode: .common)
+        autoScrollLink = link
+        autoScrollLastTimestamp = 0
+    }
+
+    private func stopAutoScroll() {
+        autoScrollLink?.invalidate()
+        autoScrollLink = nil
+        autoScrollLastTimestamp = 0
+    }
+
+    /// عند اقتراب الإصبع من حافة الشاشة تتحرك الصفحات بسرعة تتناسب مع القرب، والعنصر يبقى تحت الإصبع.
+    @objc private func autoScrollStep(_ link: CADisplayLink) {
+        guard let gesture = printedPan, let scroll = enclosingScrollView() else { return }
+        let elapsed = autoScrollLastTimestamp > 0 ? link.timestamp - autoScrollLastTimestamp : 1.0 / 60
+        autoScrollLastTimestamp = link.timestamp
+        let dt = CGFloat(min(max(elapsed, 0), 1.0 / 30))
+
+        let finger = gesture.location(in: scroll)
+        let visible = CGPoint(x: finger.x - scroll.contentOffset.x, y: finger.y - scroll.contentOffset.y)
+        let size = scroll.bounds.size
+        let inset = scroll.adjustedContentInset
+        let edge: CGFloat = 64
+        let maxSpeed: CGFloat = 1100
+
+        var velocity = CGPoint.zero
+        let topLimit = min(max(inset.top, 0), size.height * 0.3) + edge
+        let bottomLimit = size.height - min(max(inset.bottom, 0), size.height * 0.3) - edge
+        if visible.y < topLimit {
+            let factor = min(1, (topLimit - visible.y) / edge)
+            velocity.y = -maxSpeed * factor * factor
+        } else if visible.y > bottomLimit {
+            let factor = min(1, (visible.y - bottomLimit) / edge)
+            velocity.y = maxSpeed * factor * factor
+        }
+        if scroll.contentSize.width + inset.left + inset.right > size.width + 1 {
+            let sideEdge: CGFloat = 48
+            if visible.x < sideEdge {
+                let factor = min(1, (sideEdge - visible.x) / sideEdge)
+                velocity.x = -maxSpeed * factor * factor
+            } else if visible.x > size.width - sideEdge {
+                let factor = min(1, (visible.x - (size.width - sideEdge)) / sideEdge)
+                velocity.x = maxSpeed * factor * factor
+            }
+        }
+        guard velocity != .zero else { return }
+
+        let minOffset = CGPoint(x: -inset.left, y: -inset.top)
+        let maxOffset = CGPoint(x: max(minOffset.x, scroll.contentSize.width + inset.right - size.width),
+                                y: max(minOffset.y, scroll.contentSize.height + inset.bottom - size.height))
+        var offset = scroll.contentOffset
+        offset.x = min(max(offset.x + velocity.x * dt, minOffset.x), maxOffset.x)
+        offset.y = min(max(offset.y + velocity.y * dt, minOffset.y), maxOffset.y)
+        guard offset != scroll.contentOffset else { return }
+        scroll.contentOffset = offset
+        followFinger(gesture)
+    }
+
+    override func willMove(toSuperview newSuperview: UIView?) {
+        super.willMove(toSuperview: newSuperview)
+        if newSuperview == nil { stopAutoScroll() }
     }
 
     @objc private func handleResize(_ gesture: UIPanGestureRecognizer) {
