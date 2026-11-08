@@ -26,6 +26,8 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
     var onSolveSelection: ((UIImage, CGRect) -> Void)?
     /// وضع الاستماع: ضغطة على خط مكتوب ترجع وقت كتابته
     var onReplayTap: ((Date) -> Void)?
+    /// لصق ما في الحافظة (نص، صورة، مقتطف مطبوع) في مكان النقرة (إحداثيات اللوحة)
+    var onPasteAt: ((CGPoint) -> Void)?
 
     /// مساحة أعلى اللوحة لشريط الأدوات العائم، وأسفلها لمؤشر الصفحات.
     var topInset: CGFloat = 0 {
@@ -891,12 +893,14 @@ extension PageCanvasContainerView {
         pastePoint = nil
     }
 
-    /// نقرة على فراغ: إن كان في الحافظة كتابة منسوخة من التطبيق يظهر زر اللصق.
+    /// نقرة على أي فراغ: إن كان في الحافظة شيء (كتابة منسوخة، نص، صورة، مقتطف مطبوع) يظهر زر اللصق.
     private func showPasteBarIfPossible(at canvasPoint: CGPoint) {
-        guard UIPasteboard.general.contains(pasteboardTypes: [Self.strokesPasteboardType]) else { return }
+        let board = UIPasteboard.general
+        let hasStrokes = board.contains(pasteboardTypes: [Self.strokesPasteboardType])
+        guard hasStrokes || board.hasImages || board.hasStrings else { return }
         pastePoint = canvasPoint
         selectionBar.set([
-            .init(title: "لصق", symbol: "doc.on.clipboard") { [weak self] in self?.pasteFromClipboard() }
+            .init(title: "لصق", symbol: "doc.on.clipboard") { [weak self] in self?.pasteAnything() }
         ])
         selectionBar.isHidden = false
         selectionBar.alpha = 1
@@ -1042,6 +1046,17 @@ extension PageCanvasContainerView {
         lastStrokeCount = base.count
         isReplacing = false
         beginSelection(strokes: copies, rest: base, isNew: true)
+    }
+
+    /// الكتابة المنسوخة من التطبيق تُلصق كخطوط قابلة للتحديد، وغيرها (نص، صورة، مقتطف) كعنصر في مكان النقرة.
+    private func pasteAnything() {
+        if UIPasteboard.general.contains(pasteboardTypes: [Self.strokesPasteboardType]) {
+            pasteFromClipboard()
+            return
+        }
+        guard let point = pastePoint else { return }
+        hideBar()
+        onPasteAt?(point)
     }
 
     private func pasteFromClipboard() {

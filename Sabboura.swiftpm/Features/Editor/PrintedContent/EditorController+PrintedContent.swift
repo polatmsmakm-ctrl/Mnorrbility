@@ -126,10 +126,10 @@ extension EditorController {
     // MARK: اللصق
 
     /// يلصق مقتطفاً مطبوعاً منسوخاً من التطبيق بحجمه الأصلي. يعيد false إن لم يوجد.
-    func pastePrintedContent() -> Bool {
+    func pastePrintedContent(at point: CGPoint? = nil) -> Bool {
         guard let content = PrintedClipboard.printedContent(),
               note.isAlive, let view = canvasView, !layout.isEmpty else { return false }
-        let center = view.visibleContentCenter
+        let center = point ?? view.visibleContentCenter
         let index = layoutIndex(forY: center.y)
         guard layout.indices.contains(index) else { return false }
         let info = layout[index]
@@ -157,11 +157,11 @@ extension EditorController {
     }
 
     /// يلصق نصاً منسوخاً كمربع نص قابل للتعديل. يعيد false إن لم يوجد نص.
-    func pasteCopiedText() -> Bool {
+    func pasteCopiedText(at point: CGPoint? = nil) -> Bool {
         let board = UIPasteboard.general
         guard board.hasStrings, let raw = board.string else { return false }
         let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, insertTextItem(text, actionName: "لصق نص") else { return false }
+        guard !text.isEmpty, insertTextItem(text, actionName: "لصق نص", at: point) else { return false }
         showToast("لُصق النص — اضغط عليه لتعديله")
         return true
     }
@@ -180,10 +180,10 @@ extension EditorController {
 
     /// يضيف مربع نص: تحت مستطيل معيّن في صفحة معيّنة إن اتسع المكان، وإلا في وسط الجزء الظاهر.
     @discardableResult
-    private func insertTextItem(_ text: String, actionName: String,
+    private func insertTextItem(_ text: String, actionName: String, at point: CGPoint? = nil,
                                 pageID: UUID? = nil, below anchor: CGRect? = nil) -> Bool {
         guard note.isAlive, let view = canvasView, !layout.isEmpty else { return false }
-        let center = view.visibleContentCenter
+        let center = point ?? view.visibleContentCenter
         var index = layoutIndex(forY: center.y)
         if let pageID, let anchored = layout.firstIndex(where: { $0.id == pageID }) {
             index = anchored
@@ -194,7 +194,8 @@ extension EditorController {
         guard page.isAlive else { return false }
 
         let width = max(160, min(560, info.size.width - 48))
-        var x = min(max(center.x - width / 2, 24), max(24, info.size.width - width - 24))
+        // عند اللصق بنقرة: يبدأ النص من مكان النقرة نفسه
+        var x = min(max(point != nil ? center.x : center.x - width / 2, 24), max(24, info.size.width - width - 24))
         var y = min(max(center.y - info.originY, 24), max(24, info.size.height - 80))
         if let anchor, pageID != nil {
             x = min(max(anchor.minX, 24), max(24, info.size.width - width - 24))
@@ -214,6 +215,21 @@ extension EditorController {
         commitItemChange(before, actionName: actionName)
         selectInsertedItem(item.id)
         return true
+    }
+
+    // MARK: اللصق بنقرة على أي فراغ
+
+    /// يلصق ما في الحافظة في مكان النقرة (إحداثيات اللوحة): مقتطف مطبوع، أو صورة، أو نص.
+    /// الكتابة اليدوية المنسوخة تلصقها اللوحة نفسها قبل الوصول هنا.
+    func pasteClipboard(at point: CGPoint) {
+        if pastePrintedContent(at: point) { return }
+        let board = UIPasteboard.general
+        if board.hasImages, let images = board.images, !images.isEmpty {
+            insertImages(images.compactMap { $0.pngData() }, at: point)
+            return
+        }
+        if pasteCopiedText(at: point) { return }
+        showToast("الحافظة فاضية — انسخ نص أو صورة أو تحديد أولاً")
     }
 
     // MARK: الإدراج

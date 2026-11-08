@@ -175,6 +175,7 @@ final class EditorController: ObservableObject {
             self?.mathProblem = MathProblem(image: image, canvasRect: rect)
         }
         view.onReplayTap = { [weak self] date in self?.replayTapped(at: date) }
+        view.onPasteAt = { [weak self] point in self?.pasteClipboard(at: point) }
         view.setReplayMode(replay != nil)
         view.itemsOverlay.onTapEmpty = { [weak self] point in self?.createTextItem(at: point) }
         view.itemsOverlay.onTapItem = { [weak self] id in self?.editItem(id) }
@@ -920,9 +921,10 @@ final class EditorController: ObservableObject {
     }
 
     /// يدرج صورة أو أكثر في وسط الجزء الظاهر من الصفحة (مذكرة عادية أو صفحة PDF).
-    func insertImages(_ datas: [Data]) {
+    /// `point`: مكان اللصق بإحداثيات اللوحة (نقرة على فراغ)، وإلا وسط الجزء الظاهر.
+    func insertImages(_ datas: [Data], at point: CGPoint? = nil) {
         guard note.isAlive, !datas.isEmpty, let view = canvasView, !layout.isEmpty else { return }
-        let center = view.visibleContentCenter
+        let center = point ?? view.visibleContentCenter
         let index = layoutIndex(forY: center.y)
         guard layoutPages.indices.contains(index) else { return }
         let info = layout[index]
@@ -932,8 +934,10 @@ final class EditorController: ObservableObject {
         let before = [(page, page.items)]
         var items = page.items
         var lastID: UUID?
-        let localCenterY = min(max(center.y - info.originY, info.size.height * 0.2), info.size.height * 0.8)
-        let localCenterX = min(max(center.x, info.size.width * 0.25), info.size.width * 0.75)
+        let localCenterY = point != nil ? center.y - info.originY
+            : min(max(center.y - info.originY, info.size.height * 0.2), info.size.height * 0.8)
+        let localCenterX = point != nil ? center.x
+            : min(max(center.x, info.size.width * 0.25), info.size.width * 0.75)
 
         for data in datas {
             guard let original = UIImage(data: data) else { continue }
