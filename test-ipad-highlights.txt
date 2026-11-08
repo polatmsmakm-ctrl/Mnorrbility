@@ -1,0 +1,25 @@
+Test Case '-[SabbouraUITests.SabbouraUITests test1_FullFlow]' started.
+/Users/runner/work/Mnorrbility/Mnorrbility/UITests/SabbouraUITests.swift:148: error: -[SabbouraUITests.SabbouraUITests test1_FullFlow] : Failed to synthesize event: Not hittable: Button, {{1111.5, 162.5}, {234.5, 398.5}}, identifier: 'noteCard', label: 'مذكرة 8 نوفمبر, Nov 8, 2026'
+Test Case '-[SabbouraUITests.SabbouraUITests test1_FullFlow]' failed (403.813 seconds).
+Test Case '-[SabbouraUITests.SabbouraUITests test2_Themes]' started.
+Test Case '-[SabbouraUITests.SabbouraUITests test2_Themes]' passed (116.125 seconds).
+Test Case '-[SabbouraUITests.SabbouraUITests test3_PDFImport]' started.
+Test Case '-[SabbouraUITests.SabbouraUITests test3_PDFImport]' passed (137.868 seconds).
+Test Case '-[SabbouraUITests.SabbouraUITests test4_Persistence]' started.
+Test Case '-[SabbouraUITests.SabbouraUITests test4_Persistence]' passed (86.486 seconds).
+Test Case '-[SabbouraUITests.SabbouraUITests test5_HomeAndStudy]' started.
+Test Case '-[SabbouraUITests.SabbouraUITests test5_HomeAndStudy]' passed (32.251 seconds).
+Test Case '-[SabbouraUITests.SabbouraUITests test6_SmartInk]' started.
+Test Case '-[SabbouraUITests.SabbouraUITests test6_SmartInk]' passed (116.862 seconds).
+Test Case '-[SabbouraUITests.SabbouraUITests test7_Images]' started.
+Test Case '-[SabbouraUITests.SabbouraUITests test7_Images]' passed (69.547 seconds).
+Test Case '-[SabbouraUITests.SabbouraUITests test8_Review]' started.
+Test Case '-[SabbouraUITests.SabbouraUITests test8_Review]' passed (157.389 seconds).
+Test Case '-[SabbouraUITests.SabbouraUITests test9_SmartFeatures]' started.
+Test Case '-[SabbouraUITests.SabbouraUITests test9_SmartFeatures]' passed (61.575 seconds).
+Test Suite 'SabbouraUITests' failed at 2026-11-08 17:43:59.764.
+	 Executed 9 tests, with 1 failure (0 unexpected) in 1181.915 (1181.925) seconds
+Test Suite 'SabbouraUITests.xctest' failed at 2026-11-08 17:43:59.766.
+	 Executed 9 tests, with 1 failure (0 unexpected) in 1181.915 (1181.928) seconds
+Test Suite 'All tests' failed at 2026-11-08 17:43:59.767.
+	 Executed 9 tests, with 1 failure (0 unexpected) in 1181.915 (1181.932) seconds

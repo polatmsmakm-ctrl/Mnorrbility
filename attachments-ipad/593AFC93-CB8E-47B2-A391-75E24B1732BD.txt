@@ -1,0 +1,137 @@
+Application, 0x108c3adf0, pid: 11549, label: 'Mnorrbility' <App element pid: 11549>
+  Window (Main), 0x108c4bb50, {{0.0, 0.0}, {1376.0, 1032.0}} <AX element pid: 11549, elementOrHash.elementID: 4352701280.4>
+    Other, 0x108c3aad0, {{0.0, 0.0}, {1376.0, 1032.0}} <AX element pid: 11549, elementOrHash.elementID: 4862626240.845>
+    Other, 0x108c4fe80, {{0.0, 0.0}, {1376.0, 1032.0}} <AX element pid: 11549, elementOrHash.elementID: 4355848896.5>
+      Other, 0x108c4d740, {{0.0, 0.0}, {1376.0, 1032.0}} <AX element pid: 11549, elementOrHash.elementID: 4354831904.6>
+        Other, 0x108c517e0, {{0.0, 0.0}, {1376.0, 1032.0}} <AX element pid: 11549, elementOrHash.elementID: 4354833008.7>
+          Other, 0x108c47fa0, {{0.0, 0.0}, {1376.0, 1032.0}} <AX element pid: 11549, elementOrHash.elementID: 4354786688.8>
+            Other, 0x108c483c0, {{0.0, 0.0}, {1376.0, 1032.0}} <AX element pid: 11549, elementOrHash.elementID: 4355481616.9>
+              Other, 0x108c51e20, {{0.0, 0.0}, {1376.0, 1032.0}} <AX element pid: 11549, elementOrHash.elementID: 4356339888.10>
+                Other, 0x108c51f40, {{0.0, 0.0}, {1376.0, 1032.0}} <AX element pid: 11549, elementOrHash.elementID: 4356407664.12>
+                  Other, 0x108c52060, {{-100.0, 0.0}, {400.0, 1032.0}} <AX element pid: 11549, elementOrHash.elementID: 4354856400.13>
+                    Other, 0x108c52180, {{-100.0, 0.0}, {400.0, 1032.0}} <AX element pid: 11549, elementOrHash.elementID: 4354846272.16>
+                      Other, 0x108c522a0, {{-100.0, 0.0}, {400.0, 1032.0}} <AX element pid: 11549, elementOrHash.elementID: 4356819216.19>
+                        Other, 0x108c523c0, {{-100.0, 0.0}, {400.0, 1032.0}} <AX element pid: 11549, elementOrHash.elementID: 4354900448.23>
+                          Other, 0x108c524e0, {{-100.0, 0.0}, {400.0, 1032.0}} <AX element pid: 11549, elementOrHash.elementID: 4353316704.26>
+                            ScrollView, 0x108c52600, {{-100.0, 0.0}, {400.0, 1032.0}} <AX element pid: 11549, elementOrHash.elementID: 4363456000.29>
+                              Other, 0x108c52720, {{-100.0, 32.0}, {300.0, 726.0}} <AX element pid: 11549, elementOrHash.elementID: 4352882720.33>
+                                StaticText, 0x108c52840, {{197.5, 49.8}, {88.5, 20.5}}, label: 'Mnorrbility' <AX element pid: 11549, elementOrHash.elementID: 4355478944.37>
+                                Button, 0x108c52960, {{24.5, 48.5}, {23.0, 23.0}}, identifier: 'settingsButton', label: 'الإعدادات' <AX element pid: 11549, elementOrHash.elementID: 4355424864.38>
+                                Image, 0x108c52a80, {{255.5, 102.0}, {16.5, 16.5}}, identifier: 'magnifyingglass', label: 'Search' <AX element pid: 11549, elementOrHash.elementID: 4355476560.39>
+                                TextField, 0x108c52ba0, {{26.0, 99.0}, {219.5, 22.0}}, identifier: 'sidebarSearch', placeholderValue: 'بحث' <AX element pid: 11549, elementOrHash.elementID: 4371198976.40>
+                                Button, 0x108c52cc0, {{14.0, 148.0}, {272.0, 52.0}}, identifier: 'nav.home', label: 'الرئيسية' <AX element pid: 11549, elementOrHash.elementID: 4355385088.41>
+                                  Image, 0x108c52de0, {{246.5, 163.5}, {23.5, 21.0}}, identifier: 'house', label: 'Home' <AX element pid: 11549, elementOrHash.elementID: 4355469696.64>
+                                  StaticText, 0x108c52f00, {{176.5, 163.5}, {53.5, 21.0}}, label: 'الرئيسية' <AX element pid: 11549, elementOrHash.elementID: 4355303664.65>
+                                Button, 0x108c53020, {{14.0, 206.0}, {272.0, 52.0}}, identifier: 'nav.notes', label: 'الملاحظات, 1' <AX element pid: 11549, elementOrHash.elementID: 4355290640.42>
+                                  Image, 0x108c53140, {{249.5, 221.5}, {21.0, 21.0}}, identifier: 'square.and.pencil', label: 'Compose' <AX element pid: 11549, elementOrHash.elementID: 4355322448.66>
+                                  StaticText, 0x108c53260, {{157.5, 221.5}, {72.5, 21.0}}, label: 'الملاحظات' <AX element pid: 11549, elementOrHash.elementID: 4355289776.67>
+                                  StaticText, 0x108c53380, {{28.0, 222.2}, {10.5, 19.5}}, label: '1' <AX element pid: 11549, elementOrHash.elementID: 4355290208.68>
+                                Button, 0x108c536c0, {{14.0, 264.0}, {272.0, 52.0}}, identifier: 'nav.gallery', label: 'المعرض' <AX element pid: 11549, elementOrHash.elementID: 4355452880.43>
+                                  Image, 0x108c537e0, {{245.0, 279.5}, {25.5, 21.0}}, identifier: 'photo.on.rectangle.angled', label: 'photo.on.rectangle.angled' <AX element pid: 11549, elementOrHash.elementID: 4355450672.69>
+                                  StaticText, 0x108c53900, {{175.5, 279.5}, {54.5, 21.0}}, label: 'المعرض' <AX element pid: 11549, elementOrHash.elementID: 4355451104.70>
+                                StaticText, 0x108c53a20, {{218.5, 348.8}, {61.5, 18.5}}, label: 'المجلدات' <AX element pid: 11549, elementOrHash.elementID: 4355454448.44>
+                                Button, 0x108c53b40, {{20.0, 340.0}, {40.0, 36.0}}, identifier: 'addFolderMenu', label: 'إضافة مجلد' <AX element pid: 11549, elementOrHash.elementID: 4355456096.45>
+                                  Button, 0x108c53c60, {{20.0, 340.0}, {40.0, 36.0}} <AX element pid: 11549, elementOrHash.elementID: 4355062528.71>
+                                    Image, 0x108c53d80, {{32.0, 350.0}, {16.5, 16.5}}, identifier: 'plus', label: 'Add' <AX element pid: 11549, elementOrHash.elementID: 4355454880.83>
+                                Button, 0x108c53ea0, {{141.5, 400.0}, {136.5, 16.0}}, label: 'الفصل الدراسي الحالي' <AX element pid: 11549, elementOrHash.elementID: 4355223440.46>
+                                  Image, 0x108c53fc0, {{266.5, 405.0}, {10.0, 6.0}}, identifier: 'chevron.down', label: 'Go Down' <AX element pid: 11549, elementOrHash.elementID: 4355456992.72>
+                                  StaticText, 0x108c540e0, {{141.5, 400.0}, {117.5, 16.0}}, label: 'الفصل الدراسي الحالي' <AX element pid: 11549, elementOrHash.elementID: 4355461312.73>
+                                Button, 0x108c54200, {{22.0, 394.0}, {32.0, 28.0}}, label: 'More' <AX element pid: 11549, elementOrHash.elementID: 4355362720.47>
+                                  Button, 0x108c54320, {{22.0, 394.0}, {32.0, 28.0}} <AX element pid: 11549, elementOrHash.elementID: 4353199280.74>
+                                    Image, 0x108c54440, {{30.5, 406.5}, {15.5, 3.5}}, identifier: 'ellipsis', label: 'More' <AX element pid: 11549, elementOrHash.elementID: 4355224336.84>
+                                Button, 0x108c54560, {{14.0, 424.0}, {272.0, 50.0}}, identifier: 'folder.الرياضيات', label: 'الرياضيات, 1' <AX element pid: 11549, elementOrHash.elementID: 4353565184.193>
+                                  StaticText, 0x108c54680, {{14.0, 424.0}, {272.0, 50.0}}, label: 'الرياضيات' <AX element pid: 11549, elementOrHash.elementID: 4355245264.48>
+                                  StaticText, 0x108c547a0, {{28.0, 440.5}, {9.5, 17.0}}, label: '1' <AX element pid: 11549, elementOrHash.elementID: 4353111792.195>
+                                Button, 0x108c548c0, {{14.0, 476.0}, {272.0, 50.0}}, identifier: 'folder.الفيزياء', label: 'الفيزياء' <AX element pid: 11549, elementOrHash.elementID: 4355305552.49>
+                                Button, 0x108c549e0, {{14.0, 528.0}, {272.0, 50.0}}, identifier: 'folder.الكيمياء', label: 'الكيمياء' <AX element pid: 11549, elementOrHash.elementID: 4355306448.50>
+                                Button, 0x108c54b00, {{14.0, 580.0}, {272.0, 50.0}}, identifier: 'folder.اللغة العربية', label: 'اللغة العربية' <AX element pid: 11549, elementOrHash.elementID: 4355324016.51>
+                                Button, 0x108c54c20, {{240.5, 654.0}, {37.5, 16.0}}, label: 'عام' <AX element pid: 11549, elementOrHash.elementID: 4355240336.52>
+                                  Image, 0x108c54d40, {{266.5, 659.0}, {10.0, 6.0}}, identifier: 'chevron.down', label: 'Go Down' <AX element pid: 11549, elementOrHash.elementID: 4355324912.75>
+                                  StaticText, 0x108c54e60, {{240.5, 654.0}, {18.5, 16.0}}, label: 'عام' <AX element pid: 11549, elementOrHash.elementID: 4355251152.76>
+                                Button, 0x108c54f80, {{22.0, 648.0}, {32.0, 28.0}}, label: 'More' <AX element pid: 11549, elementOrHash.elementID: 4355280560.53>
+                                  Button, 0x108c550a0, {{22.0, 648.0}, {32.0, 28.0}} <AX element pid: 11549, elementOrHash.elementID: 4353205216.77>
+                                    Image, 0x108c551c0, {{30.5, 660.5}, {15.5, 3.5}}, identifier: 'ellipsis', label: 'More' <AX element pid: 11549, elementOrHash.elementID: 4355252048.85>
+                                Button, 0x108c552e0, {{14.0, 678.0}, {272.0, 50.0}}, identifier: 'folder.ملاحظات سريعة', label: 'ملاحظات سريعة' <AX element pid: 11549, elementOrHash.elementID: 4355399408.54>
+                            StaticText, 0x108c55400, {{-100.0, 972.0}, {400.0, 60.0}}, identifier: 'developerCredit', label: 'من إعداد وتطوير راشد الشمري' <AX element pid: 11549, elementOrHash.elementID: 4353316272.30>
+                  Other, 0x108c55520, {{300.0, 0.0}, {1076.0, 1032.0}} <AX element pid: 11549, elementOrHash.elementID: 4354886512.14>
+                    NavigationBar, 0x108c55640, {{300.0, 32.0}, {1076.0, 50.0}}, identifier: '_UIContextMenuActionsOnlyView' <AX element pid: 11549, elementOrHash.elementID: 4354861424.17>
+                      Other, 0x108c55760, {{1268.0, 38.0}, {46.5, 38.5}}, identifier: 'notesOptions', label: 'خيارات' <AX element pid: 11549, elementOrHash.elementID: 4364323840.93>
+                        Other, 0x108c55880, {{1268.0, 38.0}, {46.5, 38.5}} <AX element pid: 11549, elementOrHash.elementID: 4353587568.95>
+                          Button, 0x108c559a0, {{1268.0, 38.0}, {46.5, 38.5}}, identifier: 'notesOptions', label: 'خيارات' <AX element pid: 11549, elementOrHash.elementID: 4353586368.96>
+                            Button, 0x108c55ac0, {{1268.0, 38.0}, {46.5, 38.5}} <AX element pid: 11549, elementOrHash.elementID: 4353252464.97>
+                              Image, 0x108c55be0, {{1278.5, 44.5}, {25.5, 25.5}}, identifier: 'ellipsis.circle', label: 'More' <AX element pid: 11549, elementOrHash.elementID: 4353250208.99>
+                      Button, 0x108c55d00, {{1322.5, 35.0}, {41.5, 44.0}}, identifier: 'newButton', label: 'جديد' <AX element pid: 11549, elementOrHash.elementID: 4453565696.94>
+                    Other, 0x108c55e20, {{300.0, 0.0}, {1076.0, 1032.0}} <AX element pid: 11549, elementOrHash.elementID: 4354887872.18>
+                      Other, 0x108c55f40, {{300.0, 0.0}, {1076.0, 1032.0}} <AX element pid: 11549, elementOrHash.elementID: 4356828640.22>
+                        Other, 0x108c56060, {{300.0, 0.0}, {1076.0, 1032.0}} <AX element pid: 11549, elementOrHash.elementID: 4356562960.25>
+                          Other, 0x108c56180, {{300.0, 0.0}, {1076.0, 1032.0}} <AX element pid: 11549, elementOrHash.elementID: 4353408464.28>
+                            ScrollView, 0x108c562a0, {{300.0, 0.0}, {1076.0, 1032.0}} <AX element pid: 11549, elementOrHash.elementID: 4364140544.98>
+                              Other, 0x108c563c0, {{300.0, 82.0}, {1076.0, 519.5}} <AX element pid: 11549, elementOrHash.elementID: 4353362080.100>
+                                StaticText, 0x108c564e0, {{1144.0, 96.0}, {172.0, 48.5}}, identifier: 'notesTitle', label: 'الرياضيات' <AX element pid: 11549, elementOrHash.elementID: 4353239328.103>
+                                Other, 0x108c56600, {{1111.5, 162.5}, {234.5, 398.5}} <AX element pid: 11549, elementOrHash.elementID: 4353650544.194>
+                                  Button, 0x108c56720, {{1111.5, 162.5}, {234.5, 398.5}}, identifier: 'noteCard', label: 'مذكرة 8 نوفمبر, Nov 8, 2026' <AX element pid: 11549, elementOrHash.elementID: 4353649648.196>
+                                    Image, 0x108c56840, {{1111.5, 162.5}, {234.5, 331.5}} <AX element pid: 11549, elementOrHash.elementID: 4453682544.197>
+                                    StaticText, 0x108c56960, {{1223.5, 507.1}, {108.5, 21.0}}, label: 'مذكرة 8 نوفمبر' <AX element pid: 11549, elementOrHash.elementID: 4353646704.198>
+                                    StaticText, 0x108c56a80, {{1242.0, 532.1}, {90.0, 17.0}}, label: '8 نوفمبر، 2026' <AX element pid: 11549, elementOrHash.elementID: 4353647520.199>
+                              Other, 0x108c56ba0, {{276.0, 82.0}, {30.0, 950.0}}, label: 'Vertical scroll bar, 1 page', value: 0% <AX element pid: 11549, elementOrHash.elementID: 4453553040.101>
+                                Other, 0x108c56cc0, {{303.0, 490.5}, {3.0, 538.5}} <AX element pid: 11549, elementOrHash.elementID: 4453553504.109>
+                              Other, 0x108c56de0, {{276.0, 82.0}, {30.0, 950.0}}, label: 'Vertical scroll bar, 1 page', value: 0% <AX element pid: 11549, elementOrHash.elementID: 4453553040.101>
+                                Other, 0x108c56f00, {{303.0, 490.5}, {3.0, 538.5}} <AX element pid: 11549, elementOrHash.elementID: 4453553504.109>
+                  Other, 0x108c57020, {{300.0, 0.0}, {0.5, 1032.0}}, value: 100% <AX element pid: 11549, elementOrHash.elementID: 4353485904.15>
+              StaticText, 0x108c57140, {{0.5, 1003.8}, {3.0, 2.5}}, identifier: 'debugLog', label: 'sel=folder(0xb966b | open-after-menu | path=1 | editor appear | path=0 | editor disappear' <AX element pid: 11549, elementOrHash.elementID: 4355480160.11>
+    Other, 0x108c57260, {{0.0, 0.0}, {1376.0, 1032.0}} <AX element pid: 11549, elementOrHash.elementID: 4862984560.846>
+      Other, 0x108c57380, {{-1376.0, -1032.0}, {4128.0, 3096.0}} <AX element pid: 11549, elementOrHash.elementID: 4453811008.847>
+      Other, 0x108c574a0, {{0.0, 0.0}, {1376.0, 1032.0}} <AX element pid: 11549, elementOrHash.elementID: 4862973408.848>
+        Other, 0x108c575c0, {{1104.0, 149.5}, {250.0, 424.5}} <AX element pid: 11549, elementOrHash.elementID: 4917050736.849>
+          Other, 0x108c576e0, {{1104.0, 149.5}, {250.0, 424.5}} <AX element pid: 11549, elementOrHash.elementID: 4862950688.851>
+            Other, 0x108c57800, {{1104.0, 149.5}, {250.0, 424.5}} <AX element pid: 11549, elementOrHash.elementID: 4862953200.854>
+              Other, 0x108c57920, {{1104.0, 149.5}, {250.0, 424.5}} <AX element pid: 11549, elementOrHash.elementID: 4862594368.858>
+            Other, 0x108c57a40, {{1104.0, 149.5}, {250.0, 424.5}} <AX element pid: 11549, elementOrHash.elementID: 4862593536.855>
+              Other, 0x108c57b60, {{1104.0, 149.5}, {250.0, 424.5}} <AX element pid: 11549, elementOrHash.elementID: 4862595184.859>
+          Other, 0x108c57c80, {{1104.0, 149.5}, {250.0, 424.5}} <AX element pid: 11549, elementOrHash.elementID: 4454166288.852>
+            Other, 0x108c57da0, {{1104.0, 149.5}, {250.0, 424.8}} <AX element pid: 11549, elementOrHash.elementID: 4453974752.856>
+              Other, 0x108c57ec0, {{1104.0, 149.5}, {250.0, 424.8}} <AX element pid: 11549, elementOrHash.elementID: 4861867152.860>
+        Other, 0x108c57fe0, {{1092.0, 594.0}, {262.0, 271.0}} <AX element pid: 11549, elementOrHash.elementID: 4863041008.850>
+          Other, 0x108c58100, {{1092.0, 594.0}, {262.0, 271.0}} <AX element pid: 11549, elementOrHash.elementID: 4863045584.853>
+            Other, 0x108c58220, {{1092.0, 594.0}, {262.0, 271.0}} <AX element pid: 11549, elementOrHash.elementID: 4863046416.857>
+              Other, 0x108c58340, {{1092.0, 594.0}, {262.0, 271.0}} <AX element pid: 11549, elementOrHash.elementID: 4862439584.861>
+              CollectionView, 0x108c58460, {{1092.0, 594.0}, {262.0, 1032.0}} <AX element pid: 11549, elementOrHash.elementID: 4375902208.894>
+                Cell, 0x108c58580, {{1092.0, 594.0}, {262.0, 43.5}} <AX element pid: 11549, elementOrHash.elementID: 4863101104.895>
+                  Button, 0x108c587a0, {{1092.0, 594.0}, {262.0, 43.5}}, identifier: 'star', label: 'إضافة للمفضلة' <AX element pid: 11549, elementOrHash.elementID: 4863101776.908>
+                    Image, 0x108c588c0, {{1303.0, 605.5}, {22.0, 20.0}}, identifier: 'star', label: 'favorite' <AX element pid: 11549, elementOrHash.elementID: 4862582928.920>
+                Other, 0x108c589e0, {{1092.0, 637.5}, {262.0, 0.5}} <AX element pid: 11549, elementOrHash.elementID: 4863145312.896>
+                  Other, 0x108c58b00, {{1092.0, 637.5}, {262.0, 0.5}} <AX element pid: 11549, elementOrHash.elementID: 4863145824.909>
+                Cell, 0x108c58c20, {{1092.0, 638.0}, {262.0, 43.5}} <AX element pid: 11549, elementOrHash.elementID: 4862398144.897>
+                  Button, 0x108c58d40, {{1092.0, 638.0}, {262.0, 43.5}}, identifier: 'pencil', label: 'إعادة تسمية' <AX element pid: 11549, elementOrHash.elementID: 4862584048.910>
+                    Image, 0x108c58e60, {{1305.5, 652.0}, {17.5, 15.5}}, identifier: 'pencil', label: 'edit' <AX element pid: 11549, elementOrHash.elementID: 4863032304.921>
+                Other, 0x108c58f80, {{1092.0, 681.5}, {262.0, 0.5}} <AX element pid: 11549, elementOrHash.elementID: 4863156816.898>
+                  Other, 0x108c590a0, {{1092.0, 681.5}, {262.0, 0.5}} <AX element pid: 11549, elementOrHash.elementID: 4863158688.911>
+                Cell, 0x108c591c0, {{1092.0, 682.0}, {262.0, 43.5}} <AX element pid: 11549, elementOrHash.elementID: 4862300016.899>
+                  Button, 0x108c592e0, {{1092.0, 682.0}, {262.0, 43.5}}, identifier: 'folder', label: 'نقل إلى مجلد' <AX element pid: 11549, elementOrHash.elementID: 4863014752.912>
+                    Image, 0x108c59400, {{1333.5, 698.0}, {8.0, 11.5}}, identifier: 'chevron.forward', label: 'Forward' <AX element pid: 11549, elementOrHash.elementID: 4862989952.922>
+                    Image, 0x108c59520, {{1302.5, 695.0}, {23.0, 17.5}}, identifier: 'folder', label: 'move' <AX element pid: 11549, elementOrHash.elementID: 4863015792.923>
+                Other, 0x108c59640, {{1092.0, 725.5}, {262.0, 0.5}} <AX element pid: 11549, elementOrHash.elementID: 4863159696.900>
+                  Other, 0x108c59760, {{1092.0, 725.5}, {262.0, 0.5}} <AX element pid: 11549, elementOrHash.elementID: 4863162080.913>
+                Cell, 0x108c59880, {{1092.0, 726.0}, {262.0, 43.5}} <AX element pid: 11549, elementOrHash.elementID: 4863073184.901>
+                  Button, 0x108c599a0, {{1092.0, 726.0}, {262.0, 43.5}}, identifier: 'rectangle.on.rectangle.angled', label: 'مراجعة: بطاقات وكويز' <AX element pid: 11549, elementOrHash.elementID: 4862484432.914>
+                    Image, 0x108c59ac0, {{1301.5, 737.5}, {25.5, 20.0}}, identifier: 'rectangle.on.rectangle.angled', label: 'Study Cards' <AX element pid: 11549, elementOrHash.elementID: 4862294816.924>
+                Other, 0x108c59be0, {{1092.0, 769.5}, {262.0, 0.5}} <AX element pid: 11549, elementOrHash.elementID: 4863163088.902>
+                  Other, 0x108c59d00, {{1092.0, 769.5}, {262.0, 0.5}} <AX element pid: 11549, elementOrHash.elementID: 4863164960.915>
+                Cell, 0x108c59e20, {{1092.0, 770.0}, {262.0, 43.5}} <AX element pid: 11549, elementOrHash.elementID: 4863113952.903>
+                  Button, 0x108c59f40, {{1092.0, 770.0}, {262.0, 43.5}}, identifier: 'plus.square.on.square', label: 'تكرار' <AX element pid: 11549, elementOrHash.elementID: 4863126384.916>
+                    Image, 0x108c5a060, {{1303.0, 782.0}, {22.0, 19.5}}, identifier: 'plus.square.on.square', label: 'duplicate' <AX element pid: 11549, elementOrHash.elementID: 4863130480.925>
+                Other, 0x108c5a180, {{1092.0, 813.5}, {262.0, 8.0}} <AX element pid: 11549, elementOrHash.elementID: 4863154672.904>
+                Cell, 0x108c5a2a0, {{1092.0, 821.5}, {262.0, 43.5}} <AX element pid: 11549, elementOrHash.elementID: 4863131600.905>
+                  Button, 0x108c5a3c0, {{1092.0, 821.5}, {262.0, 43.5}}, identifier: 'trash', label: 'حذف' <AX element pid: 11549, elementOrHash.elementID: 4863140960.917>
+                    Image, 0x108c5a4e0, {{1304.5, 832.5}, {19.5, 20.5}}, identifier: 'trash', label: 'trash' <AX element pid: 11549, elementOrHash.elementID: 4863143904.926>
+                Other, 0x108c5a600, {{1321.0, 605.0}, {30.0, 249.0}}, label: 'Vertical scroll bar, 1 page', value: 0% <AX element pid: 11549, elementOrHash.elementID: 4862327936.906>
+                  Other, 0x108c5a720, {{1348.0, 608.0}, {3.0, 243.0}} <AX element pid: 11549, elementOrHash.elementID: 4863105696.918>
+                Other, 0x108c5a840, {{1092.0, 821.0}, {252.0, 30.0}}, label: 'Horizontal scroll bar, 1 page', value: 0% <AX element pid: 11549, elementOrHash.elementID: 4862783472.907>
+                  Other, 0x108c5a960, {{1095.0, 848.0}, {246.0, 3.0}} <AX element pid: 11549, elementOrHash.elementID: 4862783936.919>
+                Other, 0x108c5aa80, {{1321.0, 605.0}, {30.0, 249.0}}, label: 'Vertical scroll bar, 1 page', value: 0% <AX element pid: 11549, elementOrHash.elementID: 4862327936.906>
+                  Other, 0x108c5aba0, {{1348.0, 608.0}, {3.0, 243.0}} <AX element pid: 11549, elementOrHash.elementID: 4863105696.918>
+                Other, 0x108c5acc0, {{1092.0, 821.0}, {252.0, 30.0}}, label: 'Horizontal scroll bar, 1 page', value: 0% <AX element pid: 11549, elementOrHash.elementID: 4862783472.907>
+                  Other, 0x108c5ade0, {{1095.0, 848.0}, {246.0, 3.0}} <AX element pid: 11549, elementOrHash.elementID: 4862783936.919>
+  Window, 0x108c5af00, {{0.0, 0.0}, {1376.0, 1032.0}} <AX element pid: 11549, elementOrHash.elementID: 4362138624.222>
+    Other, 0x108c5b020, {{0.0, 0.0}, {1376.0, 1032.0}} <AX element pid: 11549, elementOrHash.elementID: 4862363760.225>
+      Other, 0x108c5b140, {{0.0, 0.0}, {1376.0, 1032.0}} <AX element pid: 11549, elementOrHash.elementID: 4356514016.228>

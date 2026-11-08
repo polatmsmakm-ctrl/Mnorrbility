@@ -1,0 +1,49 @@
+{
+  "devicesAndConfigurations" : [
+    {
+      "device" : {
+        "architecture" : "arm64",
+        "deviceId" : "73C19119-B10E-4309-872E-C53EF3F0EF27",
+        "deviceName" : "iPad Pro 13-inch (M5)",
+        "modelName" : "iPad Pro 13-inch (M5)",
+        "osBuildNumber" : "23C54",
+        "osVersion" : "26.2",
+        "platform" : "iOS Simulator"
+      },
+      "expectedFailures" : 0,
+      "failedTests" : 1,
+      "passedTests" : 8,
+      "skippedTests" : 0,
+      "testPlanConfiguration" : {
+        "configurationId" : "1",
+        "configurationName" : "Test Scheme Action"
+      }
+    }
+  ],
+  "environmentDescription" : "Sabboura · Built with macOS 15.8.2",
+  "expectedFailures" : 0,
+  "failedTests" : 1,
+  "finishTime" : 1794159891.972,
+  "passedTests" : 8,
+  "result" : "Failed",
+  "skippedTests" : 0,
+  "startTime" : 1794158611.442,
+  "statistics" : [
+
+  ],
+  "testFailures" : [
+    {
+      "failureText" : "Failed to synthesize event: Not hittable: Button, {{1111.5, 162.5}, {234.5, 398.5}}, identifier: 'noteCard', label: 'مذكرة 8 نوفمبر, Nov 8, 2026'",
+      "targetName" : "SabbouraUITests",
+      "testIdentifier" : 1,
+      "testIdentifierString" : "SabbouraUITests/test1_FullFlow()",
+      "testIdentifierURL" : "test://com.apple.xcode/Sabboura/SabbouraUITests/SabbouraUITests/test1_FullFlow",
+      "testName" : "test1_FullFlow()"
+    }
+  ],
+  "title" : "Test - Sabboura",
+  "topInsights" : [
+
+  ],
+  "totalTestCount" : 9
+}

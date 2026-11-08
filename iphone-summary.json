@@ -1,0 +1,42 @@
+{
+  "devicesAndConfigurations" : [
+    {
+      "device" : {
+        "architecture" : "arm64",
+        "deviceId" : "8F571767-87A3-448E-AF82-29C992EC2D5E",
+        "deviceName" : "iPhone 16 Pro",
+        "modelName" : "iPhone 16 Pro",
+        "osBuildNumber" : "23C54",
+        "osVersion" : "26.2",
+        "platform" : "iOS Simulator"
+      },
+      "expectedFailures" : 0,
+      "failedTests" : 0,
+      "passedTests" : 9,
+      "skippedTests" : 0,
+      "testPlanConfiguration" : {
+        "configurationId" : "1",
+        "configurationName" : "Test Scheme Action"
+      }
+    }
+  ],
+  "environmentDescription" : "Sabboura · Built with macOS 15.8.2",
+  "expectedFailures" : 0,
+  "failedTests" : 0,
+  "finishTime" : 1794161139.33,
+  "passedTests" : 9,
+  "result" : "Passed",
+  "skippedTests" : 0,
+  "startTime" : 1794160083.763,
+  "statistics" : [
+
+  ],
+  "testFailures" : [
+
+  ],
+  "title" : "Test - Sabboura",
+  "topInsights" : [
+
+  ],
+  "totalTestCount" : 9
+}

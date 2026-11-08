@@ -1,0 +1,5 @@
+Query chain:
+ →Find: Target Application 'com.sabboura.notes'
+  ↪︎Find: Descendants matching type Any
+    ↪︎Find: Elements matching predicate 'identifier IN {"ActivityListView", "UIActivityContentView"}'
+      ↪︎Find: First Match
