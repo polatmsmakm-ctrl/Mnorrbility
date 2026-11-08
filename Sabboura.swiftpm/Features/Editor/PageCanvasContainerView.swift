@@ -79,6 +79,8 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
     private let selectionBar = SelectionMenuBar()
     private var pastePoint: CGPoint?
     private static let strokesPasteboardType = "com.sabboura.strokes"
+    /// تحديد المحتوى المطبوع (PDF، مستند ممسوح، صورة) بنفس أداة التحديد الحر
+    let printedSelection = PrintedSelectionController()
 
     /// ماذا يفعل مسار التحديد الحر: مسح الكتابة أو ترتيبها
     private enum AreaAction { case erase, tidy, select }
@@ -167,6 +169,7 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
         selectionBar.isHidden = true
         addSubview(selectionView)
         addSubview(selectionBar)
+        printedSelection.install(in: self)
 
         areaGesture.addTarget(self, action: #selector(handleAreaGesture(_:)))
         areaGesture.isEnabled = false
@@ -279,7 +282,10 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
         let selectMode = state.tools.kind == .lasso
         let areaMode = tidyMode || selectMode || (state.tools.kind == .eraser && state.tools.eraserMode == .area)
         areaAction = tidyMode ? .tidy : (selectMode ? .select : .erase)
-        if !selectMode { commitSelection() }
+        if !selectMode {
+            commitSelection()
+            printedSelection.dismiss()
+        }
         let tint = tidyMode ? UIColor.systemIndigo
             : (selectMode ? UIColor.systemBlue : UIColor(red: 0.86, green: 0.15, blue: 0.15, alpha: 1))
         lassoLayer.strokeColor = tint.withAlphaComponent(0.9).cgColor
@@ -531,6 +537,7 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
 
     func scrollViewDidZoom(_ scrollView: UIScrollView) {
         syncGeometry()
+        printedSelection.contentDidMove()
         layoutSelectionUI()
         updateReplayHighlight()
     }
@@ -541,6 +548,7 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
     }
 
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        printedSelection.contentDidMove()
         layoutSelectionUI()
         if seamless { reportVisiblePage() }
     }
@@ -770,6 +778,7 @@ extension PageCanvasContainerView {
     func selectStrokes(enclosedBy contentPoints: [CGPoint]) {
         commitSelection()
         hideBar()
+        printedSelection.dismiss()
         let zoom = max(canvas.zoomScale, 0.0001)
         let canvasPoints = contentPoints.map { CGPoint(x: $0.x / zoom, y: $0.y / zoom) }
         let area = Self.boundingRect(of: canvasPoints)
@@ -807,7 +816,10 @@ extension PageCanvasContainerView {
                 if inside { picked.append(stroke) } else { rest.append(stroke) }
             }
             if picked.isEmpty {
-                onMessage?("ما لقيت كتابة داخل التحديد — ارسم حولها بالكامل")
+                // لا كتابة يد داخل المسار: نجرّب المحتوى المطبوع تحته (PDF، مستند ممسوح، صورة)
+                printedSelection.handleLasso(canvasPoints) { [weak self] in
+                    self?.onMessage?("ما لقيت كتابة داخل التحديد — ارسم حولها بالكامل")
+                }
                 return
             }
         }
@@ -951,6 +963,7 @@ extension PageCanvasContainerView {
 
     /// يخفي واجهة التحديد دون المساس بالرسم (قبل إعادة بناء اللوحة).
     func dropSelectionUI() {
+        printedSelection.dismiss()
         selection = nil
         selectionPan.isEnabled = false
         selectionView.isHidden = true
@@ -1047,6 +1060,30 @@ extension PageCanvasContainerView {
             return moved
         }
         beginSelection(strokes: strokes, rest: canvas.drawing.strokes, isNew: true)
+    }
+}
+
+
+// MARK: - شريط أوامر المحتوى المطبوع (نفس شريط التحديد)
+
+extension PageCanvasContainerView {
+    /// يعرض شريط التحديد بأوامر المحتوى المطبوع حول مستطيل (إحداثيات اللوحة بدون تكبير).
+    func showPrintedSelectionBar(_ actions: [SelectionMenuBar.Action], around canvasRect: CGRect) {
+        pastePoint = nil
+        selectionBar.set(actions)
+        selectionBar.isHidden = false
+        selectionBar.alpha = 1
+        layoutPrintedSelectionBar(around: canvasRect)
+    }
+
+    func layoutPrintedSelectionBar(around canvasRect: CGRect) {
+        guard selection == nil, !selectionBar.isHidden else { return }
+        placeBar(around: itemsOverlay.convert(canvasRect, to: self))
+    }
+
+    func hidePrintedSelectionBar() {
+        guard selection == nil else { return }
+        selectionBar.isHidden = true
     }
 }
 

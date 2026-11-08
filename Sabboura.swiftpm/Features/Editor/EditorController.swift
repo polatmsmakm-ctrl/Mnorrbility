@@ -81,15 +81,17 @@ final class EditorController: ObservableObject {
     @Published private(set) var recordingStart: Date? = nil
     /// مسألة محددة تنتظر الحل (تفتح نافذة الحل)
     @Published var mathProblem: MathProblem? = nil
+    /// طلب ذكاء اصطناعي على مقتطف مطبوع (ترجمة، شرح، LaTeX) — يفتح نافذة النتيجة
+    @Published var printedAIRequest: PrintedAIRequest? = nil
     /// وضع الاستماع: التسجيلات مربوطة بالكتابة
     @Published private(set) var replay: AudioReplayController? = nil
 
     private(set) var contentDark = false
     private(set) var theme: AppTheme = .darkBlue
 
-    private weak var canvasView: PageCanvasContainerView?
-    private var layout: [PageRenderInfo] = []
-    private var layoutPages: [CDPage] = []
+    private(set) weak var canvasView: PageCanvasContainerView?
+    private(set) var layout: [PageRenderInfo] = []
+    private(set) var layoutPages: [CDPage] = []
     private var touchPending = false
     private var savedSignatures: [UUID: Int] = [:]
     private var isDirty = false
@@ -178,6 +180,7 @@ final class EditorController: ObservableObject {
         view.itemsOverlay.onTapItem = { [weak self] id in self?.editItem(id) }
         view.itemsOverlay.onItemFrameChanged = { [weak self] id, frame in self?.moveItem(id, to: frame) }
         view.itemsOverlay.onDeleteItem = { [weak self] id in self?.deleteItem(id: id) }
+        attachPrintedContent(view)
         view.apply(canvasToolState)
         rebuildCanvas(scrollTo: currentIndex)
     }
@@ -519,7 +522,7 @@ final class EditorController: ObservableObject {
         DataStore.save(context)
     }
 
-    private func layoutIndex(forY y: CGFloat) -> Int {
+    func layoutIndex(forY y: CGFloat) -> Int {
         var best = 0
         for (index, info) in layout.enumerated() where info.originY - PageCanvasContainerView.pageGap / 2 <= y {
             best = index
@@ -886,7 +889,7 @@ final class EditorController: ObservableObject {
     // MARK: - التراجع عن تعديلات النصوص والصور
 
     /// يحفظ التعديل ويسجّل خطوة تراجع في نفس سجل الكتابة (زر التراجع يشمل الصور والنصوص).
-    private func commitItemChange(_ before: [(CDPage, [PageItem])], actionName: String) {
+    func commitItemChange(_ before: [(CDPage, [PageItem])], actionName: String) {
         let after = before.map { ($0.0, $0.0.items) }
         note.updatedAt = Date()
         DataStore.save(context)
@@ -980,8 +983,10 @@ final class EditorController: ObservableObject {
 
     /// لصق صورة منسوخة (من الصور أو المتصفح أو لقطة شاشة).
     func pasteImage() {
+        if pastePrintedContent() { return }
         let board = UIPasteboard.general
         guard board.hasImages, let images = board.images, !images.isEmpty else {
+            if pasteCopiedText() { return }
             showToast("ما فيه صورة منسوخة — انسخ صورة أولاً ثم الصقها هنا")
             return
         }

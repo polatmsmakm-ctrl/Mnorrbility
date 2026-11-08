@@ -20,6 +20,11 @@ struct PageItem: Codable, Identifiable, Equatable {
     var isBold: Bool = false
     /// الصورة محفوظة كمرفق في المذكرة (حتى تظهر في المعرض أيضاً).
     var attachmentID: UUID? = nil
+    /// مقتطف من محتوى مطبوع (PDF أو مستند ممسوح أو صورة): نصه إن أمكن قراءته، أو نص فارغ.
+    /// nil = عنصر عادي، وأي قيمة أخرى = مقتطف مطبوع (يستخدم السحب السلس الخاص بالمقتطفات).
+    var printedText: String? = nil
+
+    var isPrintedClip: Bool { printedText != nil }
 
     var frame: CGRect {
         get { CGRect(x: x, y: y, width: width, height: height) }

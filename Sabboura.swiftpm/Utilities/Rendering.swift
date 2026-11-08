@@ -97,7 +97,7 @@ enum PageBackgroundRenderer {
         context.restoreGState()
     }
 
-    private static func drawPDF(_ page: CGPDFPage, in rect: CGRect, context: CGContext) {
+    static func drawPDF(_ page: CGPDFPage, in rect: CGRect, context: CGContext) {
         let box = page.getBoxRect(.cropBox)
         guard box.width > 0, box.height > 0 else { return }
         let rotation = ((Int(page.rotationAngle) % 360) + 360) % 360

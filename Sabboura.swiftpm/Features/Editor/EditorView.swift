@@ -13,7 +13,6 @@ struct EditorView: View {
     /// ماذا نفعل بالملفات المختارة من تطبيق الملفات
     private enum FileImportMode { case pdfPages, attachment, images }
 
-    @State private var showFileImporter = false
     @State private var fileImportMode: FileImportMode = .attachment
     @State private var pendingFiles: [ImportedFile] = []
     @State private var showImportChoice = false
@@ -77,11 +76,6 @@ struct EditorView: View {
         .background(theme.desk.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
         .navigationBarBackButtonHidden(true)
-        .fileImporter(isPresented: $showFileImporter,
-                      allowedContentTypes: allowedImportTypes,
-                      allowsMultipleSelection: true) { result in
-            handleImport(result)
-        }
         .photosPicker(isPresented: $showPhotoPicker, selection: $photoItems, maxSelectionCount: 10,
                       matching: .images)
         .onChange(of: photoItems) { _, items in
@@ -165,6 +159,9 @@ struct EditorView: View {
         }
         .sheet(isPresented: $showChat) {
             NoteChatView(note: note)
+        }
+        .sheet(item: $controller.printedAIRequest) { request in
+            PrintedAISheet(request: request, controller: controller)
         }
         .sheet(item: $controller.mathProblem) { problem in
             MathSolverView(problem: problem) { answer in
@@ -505,17 +502,26 @@ struct EditorView: View {
 
     private func importPDF() {
         fileImportMode = .pdfPages
-        showFileImporter = true
+        presentFileImporter()
     }
 
     private func importFile() {
         fileImportMode = .attachment
-        showFileImporter = true
+        presentFileImporter()
     }
 
     private func imageFromFiles() {
         fileImportMode = .images
-        showFileImporter = true
+        presentFileImporter()
+    }
+
+    /// نافذة الملفات بطريقة UIKit: نوافذ الاستيراد في SwiftUI تتعارض إذا تداخلت
+    /// (قائمة المذكرات ← المحرر ← المرفقات) فلا يُحدَّد الملف ولا يُفتح.
+    private func presentFileImporter() {
+        let types = allowedImportTypes
+        DocumentPicker.present(types: types, allowsMultiple: true) { result in
+            handleImport(result)
+        }
     }
 
     private func takePhoto() {

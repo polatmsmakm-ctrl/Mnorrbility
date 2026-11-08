@@ -32,8 +32,23 @@ enum DocumentPicker {
     static func present(types: [UTType],
                         allowsMultiple: Bool = false,
                         completion: @escaping (Result<[URL], Error>) -> Void) {
+        presentWhenReady(types: types, allowsMultiple: allowsMultiple, attempts: 12, completion: completion)
+    }
+
+    /// ننتظر انتهاء أي حركة عرض أو إخفاء (قائمة أو نافذة تُغلق) قبل فتح تطبيق الملفات،
+    /// وإلا يرفض النظام عرض النافذة أو تظهر بلا استجابة.
+    private static func presentWhenReady(types: [UTType], allowsMultiple: Bool, attempts: Int,
+                                         completion: @escaping (Result<[URL], Error>) -> Void) {
         guard let presenter = topViewController() else {
             completion(.failure(CocoaError(.userCancelled)))
+            return
+        }
+        let busy = presenter.isBeingPresented || presenter.isBeingDismissed || presenter.transitionCoordinator != nil
+        if busy && attempts > 0 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                DocumentPicker.presentWhenReady(types: types, allowsMultiple: allowsMultiple, attempts: attempts - 1,
+                                 completion: completion)
+            }
             return
         }
         let picker = UIDocumentPickerViewController(forOpeningContentTypes: types, asCopy: true)
@@ -49,7 +64,7 @@ enum DocumentPicker {
         let scene = scenes.first(where: { $0.activationState == .foregroundActive }) ?? scenes.first
         let window = scene?.windows.first(where: { $0.isKeyWindow }) ?? scene?.windows.first
         var top = window?.rootViewController
-        while let presented = top?.presentedViewController {
+        while let presented = top?.presentedViewController, !presented.isBeingDismissed {
             top = presented
         }
         return top
