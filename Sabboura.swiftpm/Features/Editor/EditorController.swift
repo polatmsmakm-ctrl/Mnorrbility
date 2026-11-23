@@ -87,6 +87,10 @@ final class EditorController: ObservableObject {
     private var savedSignatures: [UUID: Int] = [:]
     private var isDirty = false
     private var pendingSave: DispatchWorkItem?
+    /// يزيد مع كل تعديل رسم / كل حفظ متزامن / كل إعادة بناء: يُلغي نتيجة حفظ خلفي صار قديماً
+    private var editCounter = 0
+    private var saveEpoch = 0
+    private let autosaveQueue = DispatchQueue(label: "sabboura.autosave", qos: .utility)
     private var toastWork: DispatchWorkItem?
     private var cancellables = Set<AnyCancellable>()
     private var didRunTestImport = false
@@ -106,12 +110,18 @@ final class EditorController: ObservableObject {
             .sink { [weak self] _ in self?.flush() }
             .store(in: &cancellables)
 
-        // تحديث زري التراجع والإعادة كلما تغيّر سجل التراجع (PencilKit يسجّل الخطوة بعد انتهاء الخط)
+        // تحديث زري التراجع والإعادة كلما تغيّر سجل التراجع (PencilKit يسجّل الخطوة بعد انتهاء الخط).
+        // مهم: لا نراقب NSUndoManagerCheckpoint — قراءة canRedo نفسها تُصدره، فتدور حلقة لا تنتهي
+        // (refreshUndoState ← إشعار ← refreshUndoState) وتبقي الـmain thread مشغولاً فيسخن الجهاز ويثقل.
+        // ونكتفي بسجل تراجع اللوحة فقط وليس أي UndoManager آخر في التطبيق.
         let undoNotifications: [Notification.Name] = [.NSUndoManagerDidCloseUndoGroup,
                                                       .NSUndoManagerDidUndoChange,
-                                                      .NSUndoManagerDidRedoChange,
-                                                      .NSUndoManagerCheckpoint]
+                                                      .NSUndoManagerDidRedoChange]
         Publishers.MergeMany(undoNotifications.map { NotificationCenter.default.publisher(for: $0) })
+            .filter { [weak self] note in
+                guard let manager = self?.canvasView?.itemsUndoManager else { return false }
+                return (note.object as AnyObject?) === manager
+            }
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.refreshUndoState() }
             .store(in: &cancellables)
@@ -225,6 +235,7 @@ final class EditorController: ObservableObject {
             }
         }
         isDirty = false
+        saveEpoch &+= 1
         view.configure(pages: layout,
                        drawing: combined,
                        deskColor: UIColor(hex: theme.deskHex),
@@ -329,6 +340,7 @@ final class EditorController: ObservableObject {
 
     private func drawingDidChange() {
         isDirty = true
+        editCounter &+= 1
         refreshUndoState()
         // PencilKit يغلق مجموعة التراجع في نهاية دورة الأحداث، لذلك نعيد الفحص بعدها
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
@@ -337,41 +349,91 @@ final class EditorController: ObservableObject {
         scheduleSave()
     }
 
+    /// الحفظ التلقائي: بعد توقف الكتابة ثانيتين، والتشفير الثقيل يجري في خيط خلفي (لا يجمّد الشاشة).
     private func scheduleSave() {
         pendingSave?.cancel()
-        let work = DispatchWorkItem { [weak self] in self?.flush() }
+        let work = DispatchWorkItem { [weak self] in self?.flushInBackground() }
         pendingSave = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8, execute: work)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0, execute: work)
     }
 
-    /// يكتب الرسم الحالي في قاعدة البيانات فوراً: كل خط يُنسب للصفحة التي يقع فيها.
+    private typealias EncodedPage = (index: Int, id: UUID, signature: Int, data: Data?)
+
+    /// يقسّم الرسم على الصفحات ويحسب بصمة كل صفحة ويشفّر الصفحات المتغيّرة فقط. آمن للتنفيذ في خيط خلفي.
+    private static func encodeChangedPages(drawing: PKDrawing,
+                                           origins: [(id: UUID, originY: CGFloat)],
+                                           saved: [UUID: Int]) -> [EncodedPage] {
+        guard !origins.isEmpty else { return [] }
+        func index(forY y: CGFloat) -> Int {
+            var best = 0
+            for (i, origin) in origins.enumerated() where origin.originY - PageCanvasContainerView.pageGap / 2 <= y {
+                best = i
+            }
+            return best
+        }
+        var buckets = Array(repeating: [PKStroke](), count: origins.count)
+        for stroke in drawing.strokes {
+            let i = index(forY: stroke.renderBounds.midY)
+            var moved = stroke
+            moved.transform = stroke.transform.concatenating(CGAffineTransform(translationX: 0, y: -origins[i].originY))
+            buckets[i].append(moved)
+        }
+        var result: [EncodedPage] = []
+        for (i, origin) in origins.enumerated() {
+            let pageDrawing = PKDrawing(strokes: buckets[i])
+            let pageSignature = Self.signature(pageDrawing)
+            if saved[origin.id] != pageSignature {
+                result.append((i, origin.id, pageSignature,
+                               pageDrawing.strokes.isEmpty ? nil : pageDrawing.dataRepresentation()))
+            }
+        }
+        return result
+    }
+
+    private func apply(_ encoded: [EncodedPage]) {
+        var changed = false
+        for item in encoded {
+            guard layoutPages.indices.contains(item.index) else { continue }
+            let page = layoutPages[item.index]
+            guard page.isAlive else { continue }
+            page.drawingData = item.data
+            savedSignatures[item.id] = item.signature
+            changed = true
+        }
+        if changed { note.updatedAt = Date() }
+    }
+
+    /// حفظ تلقائي بلا تجميد: اللقطة والتشفير في خيط خلفي، والكتابة في Core Data على الـmain.
+    /// إن تغيّر الرسم أو جرى حفظ متزامن أو إعادة بناء أثناء ذلك تُهمل النتيجة (التعديل التالي يجدول حفظاً جديداً).
+    private func flushInBackground() {
+        pendingSave = nil
+        guard note.isAlive, isDirty, let view = canvasView, !layout.isEmpty else { return }
+        let drawing = view.currentDrawing
+        let origins = layout.map { (id: $0.id, originY: $0.originY) }
+        let saved = savedSignatures
+        let counter = editCounter
+        let epoch = saveEpoch
+        autosaveQueue.async { [weak self] in
+            let encoded = Self.encodeChangedPages(drawing: drawing, origins: origins, saved: saved)
+            DispatchQueue.main.async {
+                guard let self, self.note.isAlive,
+                      self.editCounter == counter, self.saveEpoch == epoch else { return }
+                self.apply(encoded)
+                self.isDirty = false
+                DataStore.save(self.context)
+            }
+        }
+    }
+
+    /// يكتب الرسم الحالي في قاعدة البيانات فوراً (متزامن): عند الخروج أو تبديل الصفحات أو الخلفية.
     func flush() {
         pendingSave?.cancel()
         pendingSave = nil
+        saveEpoch &+= 1
         guard note.isAlive else { return }
         if isDirty, let view = canvasView, !layout.isEmpty {
-            var buckets = Array(repeating: [PKStroke](), count: layout.count)
-            for stroke in view.currentDrawing.strokes {
-                let index = layoutIndex(forY: stroke.renderBounds.midY)
-                var moved = stroke
-                moved.transform = stroke.transform.concatenating(
-                    CGAffineTransform(translationX: 0, y: -layout[index].originY))
-                buckets[index].append(moved)
-            }
-            var changed = false
-            for (index, info) in layout.enumerated() {
-                guard layoutPages.indices.contains(index) else { continue }
-                let page = layoutPages[index]
-                guard page.isAlive else { continue }
-                let drawing = PKDrawing(strokes: buckets[index])
-                let signature = Self.signature(drawing)
-                if savedSignatures[info.id] != signature {
-                    page.drawingData = drawing.strokes.isEmpty ? nil : drawing.dataRepresentation()
-                    savedSignatures[info.id] = signature
-                    changed = true
-                }
-            }
-            if changed { note.updatedAt = Date() }
+            let origins = layout.map { (id: $0.id, originY: $0.originY) }
+            apply(Self.encodeChangedPages(drawing: view.currentDrawing, origins: origins, saved: savedSignatures))
             isDirty = false
         }
         DataStore.save(context)

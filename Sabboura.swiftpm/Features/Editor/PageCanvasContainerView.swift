@@ -165,6 +165,8 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
         canvas.drawing = drawing
         lastStrokeCount = drawing.strokes.count
         canvas.undoManager?.removeAllActions()
+        // سجل التراجع كان بلا حد: كل خطوة (شكل مضبوط، ترتيب، ممحاة) تحتفظ بنسخة كاملة من الرسم فتكبر الذاكرة مع الوقت
+        canvas.undoManager?.levelsOfUndo = 60
         isLoading = false
         pendingScrollPage = scrollToPage
         lastReportedPage = -1
