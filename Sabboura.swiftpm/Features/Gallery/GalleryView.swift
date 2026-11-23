@@ -165,7 +165,8 @@ private struct GalleryTile: View {
                 let size = DataStore.normalizedSize(of: page)
                 var config = PageBackgroundConfig(kind: .blank, backgroundHex: "#FFFFFF", lineHex: "#FFFFFF", spacing: 30, pageSize: size)
                 config.isPDF = true
-                let snapshot = PageSnapshot(size: size, background: config, pdfPage: page, drawingData: nil)
+                let snapshot = PageSnapshot(size: size, background: config, pdfPage: page, drawingData: nil,
+                                            pdfDocument: document)
                 return PageRenderer.image(for: snapshot, targetWidth: 300, scale: 2)
             }.value
             image = rendered

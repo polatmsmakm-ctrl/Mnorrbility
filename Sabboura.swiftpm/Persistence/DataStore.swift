@@ -496,10 +496,16 @@ final class PDFSourceCache {
     }
 
     func page(for page: CDPage, context: NSManagedObjectContext) -> CGPDFPage? {
+        pageAndDocument(for: page, context: context)?.page
+    }
+
+    /// الصفحة مع مستندها: من يرسم الصفحة لاحقاً (في الخلفية) يجب أن يحتفظ بالمستند أيضاً
+    func pageAndDocument(for page: CDPage, context: NSManagedObjectContext) -> (page: CGPDFPage, document: CGPDFDocument)? {
         guard page.isAlive, let id = page.pdfSourceID,
               let document = document(for: id, context: context) else { return nil }
         let number = Int(page.pdfPageIndex) + 1
-        guard number >= 1, number <= document.numberOfPages else { return nil }
-        return document.page(at: number)
+        guard number >= 1, number <= document.numberOfPages,
+              let pdfPage = document.page(at: number) else { return nil }
+        return (pdfPage, document)
     }
 }

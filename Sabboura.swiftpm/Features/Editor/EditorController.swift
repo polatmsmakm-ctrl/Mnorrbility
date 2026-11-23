@@ -203,12 +203,14 @@ final class EditorController: ObservableObject {
         for page in displayPages where page.isAlive {
             let index = pages.firstIndex(of: page) ?? result.count
             let size = page.pageSize
+            let pdf = PDFSourceCache.shared.pageAndDocument(for: page, context: context)
             result.append(PageRenderInfo(id: page.uuid ?? UUID(),
                                          index: index,
                                          size: size,
                                          originY: y,
                                          background: page.backgroundConfig.themed(dark: contentDark, theme: theme),
-                                         pdfPage: PDFSourceCache.shared.page(for: page, context: context)))
+                                         pdfPage: pdf?.page,
+                                         pdfDocument: pdf?.document))
             y += size.height + PageCanvasContainerView.pageGap
         }
         return result
@@ -471,6 +473,12 @@ final class EditorController: ObservableObject {
                 DataStore.save(self.context)
             }
         }
+    }
+
+    /// إغلاق المحرر: حفظ متزامن ثم تفريغ سجل التراجع من الذاكرة.
+    func editorDidClose() {
+        flush()
+        canvasView?.discardUndoHistory()
     }
 
     /// يكتب الرسم الحالي في قاعدة البيانات فوراً (متزامن): عند الخروج أو تبديل الصفحات أو الخلفية.

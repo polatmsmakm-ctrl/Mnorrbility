@@ -186,7 +186,7 @@ enum NoteContentReader {
     /// صفحة PDF وحدها (بدون الحبر) — للصفحات الممسوحة ضوئياً.
     private static func backgroundImage(_ snapshot: PageSnapshot) -> CGImage? {
         let bare = PageSnapshot(size: snapshot.size, background: snapshot.background, pdfPage: snapshot.pdfPage,
-                                drawingData: nil, items: [], images: [:])
+                                drawingData: nil, items: [], images: [:], pdfDocument: snapshot.pdfDocument)
         return PageRenderer.image(for: bare, targetWidth: 1500, scale: 1).cgImage
     }
 

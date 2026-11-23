@@ -8,6 +8,8 @@ struct PageRenderInfo {
     let originY: CGFloat
     let background: PageBackgroundConfig
     let pdfPage: CGPDFPage?
+    /// يُبقي مستند PDF حياً ما دامت الصفحة مستخدمة: CGPDFPage لا يحتفظ بمستنده، والذاكرة المؤقتة قد تُخلي المستند
+    var pdfDocument: CGPDFDocument? = nil
 
     var frame: CGRect { CGRect(x: 0, y: originY, width: size.width, height: size.height) }
 }

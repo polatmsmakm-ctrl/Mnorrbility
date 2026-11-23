@@ -267,6 +267,8 @@ struct PageSnapshot {
     let drawingData: Data?
     var items: [PageItem] = []
     var images: [UUID: UIImage] = [:]
+    /// يُبقي مستند PDF حياً ما دامت الصفحة مستخدمة: CGPDFPage لا يحتفظ بمستنده، والذاكرة المؤقتة قد تُخلي المستند
+    var pdfDocument: CGPDFDocument? = nil
 
     /// صورة الحبر فقط بخلفية شفافة. في الوضع الداكن يحوّل PencilKit ألوان الحبر تلقائياً.
     func drawingImage(scale: CGFloat) -> UIImage? {
@@ -382,12 +384,35 @@ final class ThumbnailCache {
             completion(cached)
             return
         }
+        enqueue(cacheKey, width: width, completion: completion) {
+            PageSnapshot.make(for: page, context: context, dark: dark, theme: theme)
+        }
+    }
+
+    func cachedImage(forKey key: String) -> UIImage? {
+        cache.object(forKey: key as NSString)
+    }
+
+    /// مصغّرة صفحة واحدة (نظرة عامة على الصفحات) عبر نفس الطابور المحدود والذاكرة المؤقتة.
+    func render(key: String, width: CGFloat, snapshot makeSnapshot: () -> PageSnapshot,
+                completion: @escaping (UIImage?) -> Void) {
+        let cacheKey = key as NSString
+        if let cached = cache.object(forKey: cacheKey) {
+            completion(cached)
+            return
+        }
+        enqueue(cacheKey, width: width, completion: completion, snapshot: makeSnapshot)
+    }
+
+    /// يُستدعى على الخيط الرئيسي. اللقطة تُؤخذ هنا (تقرأ Core Data) والرسم في الطابور.
+    private func enqueue(_ cacheKey: NSString, width: CGFloat, completion: @escaping (UIImage?) -> Void,
+                         snapshot makeSnapshot: () -> PageSnapshot) {
         if waiting[cacheKey] != nil {
             waiting[cacheKey]?.append(completion)
             return
         }
         waiting[cacheKey] = [completion]
-        let snapshot = PageSnapshot.make(for: page, context: context, dark: dark, theme: theme)
+        let snapshot = makeSnapshot()
         queue.addOperation { [weak self] in
             let image = autoreleasepool { PageRenderer.image(for: snapshot, targetWidth: width, scale: 2) }
             let cost = Int(image.size.width * image.size.height * image.scale * image.scale * 4)
@@ -411,12 +436,14 @@ extension PageSnapshot {
                 images[id] = image
             }
         }
+        let pdf = PDFSourceCache.shared.pageAndDocument(for: page, context: context)
         return PageSnapshot(size: page.pageSize,
                             background: page.backgroundConfig.themed(dark: dark, theme: theme),
-                            pdfPage: PDFSourceCache.shared.page(for: page, context: context),
+                            pdfPage: pdf?.page,
                             drawingData: overrideData ?? (page.isAlive ? page.drawingData : nil),
                             items: items,
-                            images: images)
+                            images: images,
+                            pdfDocument: pdf?.document)
     }
 }
 

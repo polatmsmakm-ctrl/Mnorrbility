@@ -156,14 +156,20 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
         if let manager = canvas.undoManager, manager.levelsOfUndo != 60 { manager.levelsOfUndo = 60 }
     }
 
+    /// مدير التراجع يخص النافذة ويبقى بعد إغلاق المحرر؛ نحتفظ بمرجع ضعيف له لنفرّغه عند الإغلاق
+    private weak var attachedUndoManager: UndoManager?
+
     override func didMoveToWindow() {
         super.didMoveToWindow()
         if window != nil {
             limitUndoHistory()
-        } else {
-            // خرجنا من المحرر: نفرّغ سجل التراجع كي لا تبقى نسخ الرسم في الذاكرة
-            canvas.undoManager?.removeAllActions()
+            attachedUndoManager = canvas.undoManager
         }
+    }
+
+    /// يُستدعى عند إغلاق المحرر: خطوات التراجع تحتفظ بنسخ كاملة من الرسم وبهذا العرض نفسه، فتبقى في الذاكرة بعد الخروج.
+    func discardUndoHistory() {
+        (canvas.undoManager ?? attachedUndoManager)?.removeAllActions()
     }
 
     // MARK: عرض الصفحات

@@ -94,9 +94,10 @@ final class StudyService: ObservableObject {
 
     private func run(_ id: NSManagedObjectID) async {
         lastOnlineRun[id] = Date()
-        guard let note = try? context.existingObject(with: id) as? CDNote, note.isAlive,
-              let read = await NoteContentReader.prepare(note, context: context) else { return }
+        guard let note = try? context.existingObject(with: id) as? CDNote, note.isAlive else { return }
+        // البصمة قبل اللقطات: لو تغيّرت المذكرة أثناء القراءة تبقى المراجعة «قديمة» فتُحدَّث لاحقاً
         let signature = note.contentSignature
+        guard let read = await NoteContentReader.prepare(note, context: context) else { return }
         let provider = ReviewSettings.activeProvider
         var notice: String?
         var result: StudySet

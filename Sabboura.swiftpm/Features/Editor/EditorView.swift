@@ -161,7 +161,7 @@ struct EditorView: View {
             appState.noteDebug("editor disappear")
             appState.hideStatusBar = false
             controller.stopRecordingIfNeeded()
-            controller.flush()
+            controller.editorDidClose()
             // المذكرة تغيّرت؟ نجهّز بطاقات الحفظ والكويز في الخلفية
             StudyService.shared.noteDidChange(note)
         }
