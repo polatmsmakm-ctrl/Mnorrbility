@@ -28,6 +28,7 @@ final class StudySessionManager: ObservableObject {
         didSet {
             persist()
             syncNoise(from: oldValue)
+            updateTicking()
         }
     }
     @Published private(set) var now = Date()
@@ -60,7 +61,7 @@ final class StudySessionManager: ObservableObject {
            let saved = try? JSONDecoder().decode(Running.self, from: data) {
             running = saved
         }
-        startTicking()
+        updateTicking()
     }
 
     var isActive: Bool { running != nil }
@@ -127,7 +128,15 @@ final class StudySessionManager: ObservableObject {
 
     // MARK: داخلي
 
-    private func startTicking() {
+    /// المؤقت الثانوي يعمل فقط أثناء جلسة جارية (لا إيقاف مؤقت)؛ كان يدق كل ثانية طوال عمر التطبيق ويعيد رسم الواجهة بلا فائدة.
+    private func updateTicking() {
+        let needsTimer = running?.endDate != nil
+        if !needsTimer {
+            timer = nil
+            return
+        }
+        guard timer == nil else { return }
+        now = Date()
         timer = Timer.publish(every: 1, on: .main, in: .common)
             .autoconnect()
             .sink { [weak self] date in

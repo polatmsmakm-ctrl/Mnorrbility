@@ -87,6 +87,9 @@ final class EditorController: ObservableObject {
     private var savedSignatures: [UUID: Int] = [:]
     private var isDirty = false
     private var pendingSave: DispatchWorkItem?
+    /// وقت أقدم تعديل لم يُحفظ بعد: الحفظ التلقائي لا يتأخر عنه أكثر من `maxUnsavedInterval` حتى لو استمرت الكتابة
+    private var firstUnsavedTime: CFAbsoluteTime?
+    private static let maxUnsavedInterval: CFTimeInterval = 15
     /// يزيد مع كل تعديل رسم / كل حفظ متزامن / كل إعادة بناء: يُلغي نتيجة حفظ خلفي صار قديماً
     private var editCounter = 0
     private var saveEpoch = 0
@@ -225,16 +228,30 @@ final class EditorController: ObservableObject {
         layoutPages = displayPages
         layout = buildLayout(for: displayPages)
 
-        var combined = PKDrawing()
+        // فك ترميز الصفحات على عدة أنوية (على دفعات حتى لا تتضخم الذاكرة) وبناء الرسم المجمّع مرة واحدة
+        var allStrokes: [PKStroke] = []
         savedSignatures = [:]
-        for (info, page) in zip(layout, displayPages) {
-            let drawing = page.drawingData.flatMap { try? PKDrawing(data: $0) } ?? PKDrawing()
-            savedSignatures[info.id] = Self.signature(drawing)
-            if !drawing.strokes.isEmpty {
-                combined.append(drawing.transformed(using: CGAffineTransform(translationX: 0, y: info.originY)))
+        let pairs = Array(zip(layout, displayPages))
+        let chunkSize = 24
+        var start = 0
+        while start < pairs.count {
+            let end = min(start + chunkSize, pairs.count)
+            let decoded = Self.decodePages(pairs[start..<end].map { $0.1.drawingData })
+            for (offset, result) in decoded.enumerated() {
+                let info = pairs[start + offset].0
+                savedSignatures[info.id] = result.signature
+                let shift = CGAffineTransform(translationX: 0, y: info.originY)
+                for stroke in result.drawing.strokes {
+                    var moved = stroke
+                    moved.transform = stroke.transform.concatenating(shift)
+                    allStrokes.append(moved)
+                }
             }
+            start = end
         }
+        let combined = PKDrawing(strokes: allStrokes)
         isDirty = false
+        firstUnsavedTime = nil
         saveEpoch &+= 1
         view.configure(pages: layout,
                        drawing: combined,
@@ -244,6 +261,20 @@ final class EditorController: ObservableObject {
                        scrollToPage: seamless ? pageIndex : nil)
         refreshItems()
         refreshUndoState()
+    }
+
+    /// يفك ترميز رسوم الصفحات بالتوازي ويحسب بصمة كل صفحة (دوال نقية آمنة على أي خيط).
+    private static func decodePages(_ datas: [Data?]) -> [(drawing: PKDrawing, signature: Int)] {
+        guard !datas.isEmpty else { return [] }
+        var results = [(drawing: PKDrawing, signature: Int)](repeating: (PKDrawing(), 0), count: datas.count)
+        results.withUnsafeMutableBufferPointer { buffer in
+            guard let base = buffer.baseAddress else { return }
+            DispatchQueue.concurrentPerform(iterations: datas.count) { index in
+                let drawing = datas[index].flatMap { try? PKDrawing(data: $0) } ?? PKDrawing()
+                base[index] = (drawing, EditorController.signature(drawing))
+            }
+        }
+        return results
     }
 
     private func visiblePageChanged(_ index: Int) {
@@ -340,6 +371,7 @@ final class EditorController: ObservableObject {
 
     private func drawingDidChange() {
         isDirty = true
+        if firstUnsavedTime == nil { firstUnsavedTime = CFAbsoluteTimeGetCurrent() }
         editCounter &+= 1
         refreshUndoState()
         // PencilKit يغلق مجموعة التراجع في نهاية دورة الأحداث، لذلك نعيد الفحص بعدها
@@ -349,12 +381,17 @@ final class EditorController: ObservableObject {
         scheduleSave()
     }
 
-    /// الحفظ التلقائي: بعد توقف الكتابة ثانيتين، والتشفير الثقيل يجري في خيط خلفي (لا يجمّد الشاشة).
+    /// الحفظ التلقائي: بعد توقف الكتابة ثانيتين، ولا يتأخر أكثر من 15 ثانية عن أول تعديل لم يُحفظ
+    /// (حتى لو بقيت تكتب بلا توقف). التشفير الثقيل يجري في خيط خلفي فلا يجمّد الشاشة.
     private func scheduleSave() {
         pendingSave?.cancel()
+        let now = CFAbsoluteTimeGetCurrent()
+        let first = firstUnsavedTime ?? now
+        if firstUnsavedTime == nil { firstUnsavedTime = first }
+        let delay = max(0.2, min(2.0, Self.maxUnsavedInterval - (now - first)))
         let work = DispatchWorkItem { [weak self] in self?.flushInBackground() }
         pendingSave = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0, execute: work)
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
     }
 
     private typealias EncodedPage = (index: Int, id: UUID, signature: Int, data: Data?)
@@ -404,10 +441,17 @@ final class EditorController: ObservableObject {
     }
 
     /// حفظ تلقائي بلا تجميد: اللقطة والتشفير في خيط خلفي، والكتابة في Core Data على الـmain.
-    /// إن تغيّر الرسم أو جرى حفظ متزامن أو إعادة بناء أثناء ذلك تُهمل النتيجة (التعديل التالي يجدول حفظاً جديداً).
+    /// إن جرى حفظ متزامن أو إعادة بناء أثناء ذلك تُهمل النتيجة (لأن الحفظ المتزامن أحدث منها).
+    /// أما إن أُضيفت خطوط جديدة أثناء التشفير فتُحفظ اللقطة (نسخة متسقة أقدم قليلاً) ويُجدول حفظ جديد للباقي،
+    /// حتى لا تضيع الكتابة أبداً مهما كانت المذكرة كبيرة.
     private func flushInBackground() {
         pendingSave = nil
-        guard note.isAlive, isDirty, let view = canvasView, !layout.isEmpty else { return }
+        guard note.isAlive else { return }
+        guard isDirty, let view = canvasView, !layout.isEmpty else {
+            // لا رسم للتشفير (مثلاً تغيير خلفية فقط): نكتفي بحفظ تغييرات Core Data المعلّقة
+            DataStore.save(context)
+            return
+        }
         let drawing = view.currentDrawing
         let origins = layout.map { (id: $0.id, originY: $0.originY) }
         let saved = savedSignatures
@@ -416,10 +460,14 @@ final class EditorController: ObservableObject {
         autosaveQueue.async { [weak self] in
             let encoded = Self.encodeChangedPages(drawing: drawing, origins: origins, saved: saved)
             DispatchQueue.main.async {
-                guard let self, self.note.isAlive,
-                      self.editCounter == counter, self.saveEpoch == epoch else { return }
+                guard let self, self.note.isAlive, self.saveEpoch == epoch else { return }
                 self.apply(encoded)
-                self.isDirty = false
+                if self.editCounter == counter {
+                    self.isDirty = false
+                    self.firstUnsavedTime = nil
+                } else {
+                    self.scheduleSave()
+                }
                 DataStore.save(self.context)
             }
         }
@@ -436,6 +484,7 @@ final class EditorController: ObservableObject {
             apply(Self.encodeChangedPages(drawing: view.currentDrawing, origins: origins, saved: savedSignatures))
             isDirty = false
         }
+        firstUnsavedTime = nil
         DataStore.save(context)
     }
 

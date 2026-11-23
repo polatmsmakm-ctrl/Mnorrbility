@@ -45,6 +45,7 @@ final class PrintedTextExtractor {
         }
         guard !document.isLocked else { return nil }
         lock.lock()
+        if documents.count >= 4 { documents.removeAll() }   // لا نحتفظ بأكثر من 4 مستندات PDF مفتوحة
         documents[id] = document
         lock.unlock()
         return document
