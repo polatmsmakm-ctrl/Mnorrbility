@@ -203,7 +203,7 @@ struct NoteChatView: View {
     private func prepare() async {
         guard preparing else { return }
         let context = note.managedObjectContext ?? PersistenceController.shared.viewContext
-        guard let read = NoteContentReader.prepare(note, context: context) else {
+        guard let read = await NoteContentReader.prepare(note, context: context) else {
             preparing = false
             return
         }

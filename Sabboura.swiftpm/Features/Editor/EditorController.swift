@@ -114,6 +114,9 @@ final class EditorController: ObservableObject {
     private let saveLock = NSLock()
     private var pendingSaveResult: BackgroundSaveResult?
     private var saveGeneration = 0
+    /// وقت أقدم تعديل لم يُحفظ بعد: الحفظ التلقائي لا يتأخر عنه أكثر من `maxUnsavedInterval` حتى لو استمرت الكتابة
+    private var firstUnsavedTime: CFAbsoluteTime?
+    private static let maxUnsavedInterval: CFTimeInterval = 15
     private var toastWork: DispatchWorkItem?
     private var cancellables = Set<AnyCancellable>()
     private var didRunTestImport = false
@@ -133,12 +136,18 @@ final class EditorController: ObservableObject {
             .sink { [weak self] _ in self?.flush() }
             .store(in: &cancellables)
 
-        // تحديث زري التراجع والإعادة كلما تغيّر سجل التراجع (PencilKit يسجّل الخطوة بعد انتهاء الخط)
+        // تحديث زري التراجع والإعادة كلما تغيّر سجل التراجع (PencilKit يسجّل الخطوة بعد انتهاء الخط).
+        // مهم: لا نراقب NSUndoManagerCheckpoint — قراءة canRedo نفسها تُصدره، فتدور حلقة لا تنتهي
+        // (refreshUndoState ← إشعار ← refreshUndoState) وتبقي الـmain thread مشغولاً فيسخن الجهاز ويثقل.
+        // ونكتفي بسجل تراجع اللوحة فقط وليس أي UndoManager آخر في التطبيق.
         let undoNotifications: [Notification.Name] = [.NSUndoManagerDidCloseUndoGroup,
                                                       .NSUndoManagerDidUndoChange,
-                                                      .NSUndoManagerDidRedoChange,
-                                                      .NSUndoManagerCheckpoint]
+                                                      .NSUndoManagerDidRedoChange]
         Publishers.MergeMany(undoNotifications.map { NotificationCenter.default.publisher(for: $0) })
+            .filter { [weak self] note in
+                guard let manager = self?.canvasView?.itemsUndoManager else { return false }
+                return (note.object as AnyObject?) === manager
+            }
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.refreshUndoState() }
             .store(in: &cancellables)
@@ -225,12 +234,14 @@ final class EditorController: ObservableObject {
         for page in displayPages where page.isAlive {
             let index = pages.firstIndex(of: page) ?? result.count
             let size = page.pageSize
+            let pdf = PDFSourceCache.shared.pageAndDocument(for: page, context: context)
             result.append(PageRenderInfo(id: page.uuid ?? UUID(),
                                          index: index,
                                          size: size,
                                          originY: y,
                                          background: page.backgroundConfig.themed(dark: contentDark, theme: theme),
-                                         pdfPage: PDFSourceCache.shared.page(for: page, context: context)))
+                                         pdfPage: pdf?.page,
+                                         pdfDocument: pdf?.document))
             y += size.height + PageCanvasContainerView.pageGap
         }
         return result
@@ -253,16 +264,30 @@ final class EditorController: ObservableObject {
         layoutPages = displayPages
         layout = buildLayout(for: displayPages)
 
-        var combined = PKDrawing()
+        // فك ترميز الصفحات على عدة أنوية (على دفعات حتى لا تتضخم الذاكرة) وبناء الرسم المجمّع مرة واحدة
+        var allStrokes: [PKStroke] = []
         savedSignatures = [:]
-        for (info, page) in zip(layout, displayPages) {
-            let drawing = page.drawingData.flatMap { try? PKDrawing(data: $0) } ?? PKDrawing()
-            savedSignatures[info.id] = Self.signature(drawing)
-            if !drawing.strokes.isEmpty {
-                combined.append(drawing.transformed(using: CGAffineTransform(translationX: 0, y: info.originY)))
+        let pairs = Array(zip(layout, displayPages))
+        let chunkSize = 24
+        var start = 0
+        while start < pairs.count {
+            let end = min(start + chunkSize, pairs.count)
+            let decoded = Self.decodePages(pairs[start..<end].map { $0.1.drawingData })
+            for (offset, result) in decoded.enumerated() {
+                let info = pairs[start + offset].0
+                savedSignatures[info.id] = result.signature
+                let shift = CGAffineTransform(translationX: 0, y: info.originY)
+                for stroke in result.drawing.strokes {
+                    var moved = stroke
+                    moved.transform = stroke.transform.concatenating(shift)
+                    allStrokes.append(moved)
+                }
             }
+            start = end
         }
+        let combined = PKDrawing(strokes: allStrokes)
         isDirty = false
+        firstUnsavedTime = nil
         view.configure(pages: layout,
                        drawing: combined,
                        deskColor: UIColor(hex: theme.deskHex),
@@ -271,6 +296,20 @@ final class EditorController: ObservableObject {
                        scrollToPage: seamless ? pageIndex : nil)
         refreshItems()
         refreshUndoState()
+    }
+
+    /// يفك ترميز رسوم الصفحات بالتوازي ويحسب بصمة كل صفحة (دوال نقية آمنة على أي خيط).
+    private static func decodePages(_ datas: [Data?]) -> [(drawing: PKDrawing, signature: Int)] {
+        guard !datas.isEmpty else { return [] }
+        var results = [(drawing: PKDrawing, signature: Int)](repeating: (PKDrawing(), 0), count: datas.count)
+        results.withUnsafeMutableBufferPointer { buffer in
+            guard let base = buffer.baseAddress else { return }
+            DispatchQueue.concurrentPerform(iterations: datas.count) { index in
+                let drawing = datas[index].flatMap { try? PKDrawing(data: $0) } ?? PKDrawing()
+                base[index] = (drawing, EditorController.signature(drawing))
+            }
+        }
+        return results
     }
 
     private func visiblePageChanged(_ index: Int) {
@@ -367,6 +406,7 @@ final class EditorController: ObservableObject {
 
     private func drawingDidChange() {
         isDirty = true
+        if firstUnsavedTime == nil { firstUnsavedTime = CFAbsoluteTimeGetCurrent() }
         refreshUndoState()
         // PencilKit يغلق مجموعة التراجع في نهاية دورة الأحداث، لذلك نعيد الفحص بعدها
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
@@ -375,11 +415,35 @@ final class EditorController: ObservableObject {
         scheduleSave()
     }
 
+    /// الحفظ التلقائي: بعد توقف الكتابة ثانيتين (كان 0.8 ثانية فيعيد تقسيم حبر المذكرة كلها عند كل توقف قصير)،
+    /// ولا يتأخر أكثر من 15 ثانية عن أول تعديل لم يُحفظ حتى لو بقيت تكتب بلا توقف.
     private func scheduleSave() {
         pendingSave?.cancel()
+        let now = CFAbsoluteTimeGetCurrent()
+        let first = firstUnsavedTime ?? now
+        if firstUnsavedTime == nil { firstUnsavedTime = first }
+        let delay = max(0.2, min(2.0, Self.maxUnsavedInterval - (now - first)))
         let work = DispatchWorkItem { [weak self] in self?.autosave() }
         pendingSave = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8, execute: work)
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
+    }
+
+    /// رقم الصفحة التي يقع فيها الارتفاع y (بحث ثنائي؛ كان مسحاً لكل الصفحات لكل خط).
+    /// `origins` مرتبة تصاعدياً.
+    static func pageIndex(forY y: CGFloat, origins: [CGFloat], gap: CGFloat) -> Int {
+        var low = 0
+        var high = origins.count - 1
+        var best = 0
+        while low <= high {
+            let mid = (low + high) / 2
+            if origins[mid] - gap / 2 <= y {
+                best = mid
+                low = mid + 1
+            } else {
+                high = mid - 1
+            }
+        }
+        return best
     }
 
     /// الحفظ التلقائي أثناء الكتابة: يجري في الخلفية.
@@ -389,6 +453,7 @@ final class EditorController: ObservableObject {
 
         let drawing = view.currentDrawing
         isDirty = false
+        firstUnsavedTime = nil
         let generation = saveGeneration
         let ids = layout.map(\.id)
         let origins = layout.map(\.originY)
@@ -401,10 +466,7 @@ final class EditorController: ObservableObject {
             for stroke in drawing.strokes {
                 let bounds = stroke.renderBounds
                 let midY = bounds.midY
-                var index = 0
-                for (i, originY) in origins.enumerated() where originY - gap / 2 <= midY {
-                    index = i
-                }
+                let index = EditorController.pageIndex(forY: midY, origins: origins, gap: gap)
                 var moved = stroke
                 moved.transform = stroke.transform.concatenating(
                     CGAffineTransform(translationX: 0, y: -origins[index]))
@@ -484,6 +546,12 @@ final class EditorController: ObservableObject {
         applyPendingSaveResult()
     }
 
+    /// إغلاق المحرر: حفظ متزامن ثم تفريغ سجل التراجع من الذاكرة.
+    func editorDidClose() {
+        flush()
+        canvasView?.discardUndoHistory()
+    }
+
     /// يكتب الرسم الحالي في قاعدة البيانات فوراً: كل خط يُنسب للصفحة التي يقع فيها.
     func flush() {
         pendingSave?.cancel()
@@ -493,8 +561,10 @@ final class EditorController: ObservableObject {
         if isDirty, let view = canvasView, !layout.isEmpty {
             saveGeneration += 1
             var buckets = Array(repeating: [PKStroke](), count: layout.count)
+            let origins = layout.map(\.originY)
             for stroke in view.currentDrawing.strokes {
-                let index = layoutIndex(forY: stroke.renderBounds.midY)
+                let index = Self.pageIndex(forY: stroke.renderBounds.midY, origins: origins,
+                                           gap: PageCanvasContainerView.pageGap)
                 var moved = stroke
                 moved.transform = stroke.transform.concatenating(
                     CGAffineTransform(translationX: 0, y: -layout[index].originY))
@@ -516,6 +586,7 @@ final class EditorController: ObservableObject {
             if changed { touchPending = true }
             isDirty = false
         }
+        firstUnsavedTime = nil
         if touchPending {
             touchPending = false
             note.updatedAt = Date()
@@ -524,11 +595,7 @@ final class EditorController: ObservableObject {
     }
 
     func layoutIndex(forY y: CGFloat) -> Int {
-        var best = 0
-        for (index, info) in layout.enumerated() where info.originY - PageCanvasContainerView.pageGap / 2 <= y {
-            best = index
-        }
-        return best
+        Self.pageIndex(forY: y, origins: layout.map(\.originY), gap: PageCanvasContainerView.pageGap)
     }
 
     /// تقريب آمن للبصمة (لا ينهار مع القيم غير المنتهية، ويتجاهل فروق الفاصلة الصغيرة).
@@ -1247,8 +1314,10 @@ final class EditorController: ObservableObject {
         var live: [NSManagedObjectID: Data] = [:]
         if let view = canvasView, !layout.isEmpty, layout.count == layoutPages.count {
             var buckets = Array(repeating: [PKStroke](), count: layout.count)
+            let origins = layout.map(\.originY)
             for stroke in view.currentDrawing.strokes {
-                let index = layoutIndex(forY: stroke.renderBounds.midY)
+                let index = Self.pageIndex(forY: stroke.renderBounds.midY, origins: origins,
+                                           gap: PageCanvasContainerView.pageGap)
                 var moved = stroke
                 moved.transform = stroke.transform.concatenating(
                     CGAffineTransform(translationX: 0, y: -layout[index].originY))

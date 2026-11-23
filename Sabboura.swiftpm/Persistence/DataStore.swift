@@ -453,6 +453,9 @@ final class PDFSourceCache {
 
     private let lock = NSLock()
     private var documents: [UUID: CGPDFDocument] = [:]
+    /// ترتيب الاستخدام (الأقدم أولاً) لإخلاء الأقدم: كل مستند يحتفظ ببيانات ملف PDF كاملة في الذاكرة
+    private var recent: [UUID] = []
+    private static let maxDocuments = 6
 
     static func makeDocument(from data: Data) -> CGPDFDocument? {
         guard let provider = CGDataProvider(data: data as CFData),
@@ -466,12 +469,23 @@ final class PDFSourceCache {
     func store(_ document: CGPDFDocument, for id: UUID) {
         lock.lock()
         documents[id] = document
+        touch(id)
+        while recent.count > Self.maxDocuments {
+            documents[recent.removeFirst()] = nil
+        }
         lock.unlock()
+    }
+
+    /// يُستدعى والقفل مأخوذ
+    private func touch(_ id: UUID) {
+        if let index = recent.firstIndex(of: id) { recent.remove(at: index) }
+        recent.append(id)
     }
 
     func document(for id: UUID, context: NSManagedObjectContext) -> CGPDFDocument? {
         lock.lock()
         let cached = documents[id]
+        if cached != nil { touch(id) }
         lock.unlock()
         if let cached { return cached }
         guard let attachment = DataStore.attachment(with: id, in: context),
@@ -482,10 +496,16 @@ final class PDFSourceCache {
     }
 
     func page(for page: CDPage, context: NSManagedObjectContext) -> CGPDFPage? {
+        pageAndDocument(for: page, context: context)?.page
+    }
+
+    /// الصفحة مع مستندها: من يرسم الصفحة لاحقاً (في الخلفية) يجب أن يحتفظ بالمستند أيضاً
+    func pageAndDocument(for page: CDPage, context: NSManagedObjectContext) -> (page: CGPDFPage, document: CGPDFDocument)? {
         guard page.isAlive, let id = page.pdfSourceID,
               let document = document(for: id, context: context) else { return nil }
         let number = Int(page.pdfPageIndex) + 1
-        guard number >= 1, number <= document.numberOfPages else { return nil }
-        return document.page(at: number)
+        guard number >= 1, number <= document.numberOfPages,
+              let pdfPage = document.page(at: number) else { return nil }
+        return (pdfPage, document)
     }
 }

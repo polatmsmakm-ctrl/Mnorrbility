@@ -375,7 +375,10 @@ final class ItemView: UIView, UIGestureRecognizerDelegate {
 
     private func startAutoScroll() {
         stopAutoScroll()
-        let link = CADisplayLink(target: self, selector: #selector(autoScrollStep(_:)))
+        let proxy = DisplayLinkProxy { [weak self] link in
+            if let self { self.autoScrollStep(link) } else { link.invalidate() }
+        }
+        let link = CADisplayLink(target: proxy, selector: #selector(DisplayLinkProxy.fire(_:)))
         link.preferredFrameRateRange = CAFrameRateRange(minimum: 60, maximum: 120, preferred: 120)
         link.add(to: .main, forMode: .common)
         autoScrollLink = link
@@ -389,8 +392,13 @@ final class ItemView: UIView, UIGestureRecognizerDelegate {
     }
 
     /// عند اقتراب الإصبع من حافة الشاشة تتحرك الصفحات بسرعة تتناسب مع القرب، والعنصر يبقى تحت الإصبع.
-    @objc private func autoScrollStep(_ link: CADisplayLink) {
-        guard let gesture = printedPan, let scroll = enclosingScrollView() else { return }
+    private func autoScrollStep(_ link: CADisplayLink) {
+        // السحب انتهى أو العنصر خرج من الشاشة: نوقف المؤقت بدل تركه يعمل 120 مرة في الثانية بلا فائدة
+        guard let gesture = printedPan, gesture.state == .began || gesture.state == .changed,
+              let scroll = enclosingScrollView() else {
+            stopAutoScroll()
+            return
+        }
         let elapsed = autoScrollLastTimestamp > 0 ? link.timestamp - autoScrollLastTimestamp : 1.0 / 60
         autoScrollLastTimestamp = link.timestamp
         let dt = CGFloat(min(max(elapsed, 0), 1.0 / 30))

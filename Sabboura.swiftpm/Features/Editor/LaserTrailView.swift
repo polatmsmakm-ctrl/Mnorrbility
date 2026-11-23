@@ -89,7 +89,10 @@ final class LaserTrailView: UIView {
 
     private func startDisplayLink() {
         guard displayLink == nil else { return }
-        let link = CADisplayLink(target: self, selector: #selector(tick))
+        let proxy = DisplayLinkProxy { [weak self] link in
+            if let self { self.tick() } else { link.invalidate() }
+        }
+        let link = CADisplayLink(target: proxy, selector: #selector(DisplayLinkProxy.fire(_:)))
         link.add(to: .main, forMode: .common)
         displayLink = link
     }
@@ -99,7 +102,7 @@ final class LaserTrailView: UIView {
         displayLink = nil
     }
 
-    @objc private func tick() {
+    private func tick() {
         let now = CACurrentMediaTime()
         samples.removeAll { now - $0.time > trailLifetime }
         if let released = releaseTime, now - released > headFadeDuration {
@@ -180,5 +183,18 @@ final class LaserTrailView: UIView {
         context.setFillColor(UIColor.white.withAlphaComponent(0.9 * alpha).cgColor)
         context.fillEllipse(in: CGRect(x: head.x - coreRadius, y: head.y - coreRadius,
                                        width: coreRadius * 2, height: coreRadius * 2))
+    }
+}
+
+/// وسيط ضعيف لـCADisplayLink: المؤقت يحتفظ بهدفه بقوة، فلو كان الهدف هو الـview نفسه بقي حياً (ويعمل المؤقت) بعد إزالته.
+final class DisplayLinkProxy: NSObject {
+    private let handler: (CADisplayLink) -> Void
+
+    init(_ handler: @escaping (CADisplayLink) -> Void) {
+        self.handler = handler
+    }
+
+    @objc func fire(_ link: CADisplayLink) {
+        handler(link)
     }
 }

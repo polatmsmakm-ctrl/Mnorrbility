@@ -19,6 +19,14 @@ final class StudyService: ObservableObject {
 
     private var context: NSManagedObjectContext { PersistenceController.shared.viewContext }
 
+    /// التوليد التلقائي عمل ثقيل (قراءة وتعرّف على الصفحات): لا نبدأه والجهاز ساخن أو في وضع توفير الطاقة.
+    /// الزر اليدوي «تحديث» يبقى يعمل دائماً.
+    private static var deviceAllowsAutoWork: Bool {
+        let info = ProcessInfo.processInfo
+        if info.isLowPowerModeEnabled { return false }
+        return info.thermalState == .nominal || info.thermalState == .fair
+    }
+
     func isWorking(on note: CDNote) -> Bool { working[note.objectID] != nil }
 
     func status(for note: CDNote) -> String? { working[note.objectID] }
@@ -33,18 +41,19 @@ final class StudyService: ObservableObject {
 
     /// تغيّرت المذكرة (خروج من شاشة الكتابة، استيراد ملف…): نولّد بعد لحظات إن احتاجت.
     func noteDidChange(_ note: CDNote, delay: TimeInterval = 1.5) {
-        guard ReviewSettings.autoGenerate, note.isAlive, note.deletedAt == nil else { return }
+        guard ReviewSettings.autoGenerate, note.isAlive, note.deletedAt == nil, Self.deviceAllowsAutoWork else { return }
         let id = note.objectID
         pendingAuto[id]?.cancel()
         pendingAuto[id] = Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
             guard !Task.isCancelled, let self else { return }
             self.pendingAuto[id] = nil
-            guard let note = try? self.context.existingObject(with: id) as? CDNote,
+            guard Self.deviceAllowsAutoWork,
+                  let note = try? self.context.existingObject(with: id) as? CDNote,
                   note.isAlive, note.isStudyStale else { return }
-            // لا نكرر Gemini أو Claude على نفس المذكرة أكثر من مرة كل ١٠ دقائق تلقائياً
-            // (توفيراً للحد المجاني والتكلفة)
-            if ReviewSettings.usesOnline, let last = self.lastOnlineRun[id],
+            // لا نكرر التوليد التلقائي على نفس المذكرة أكثر من مرة كل ١٠ دقائق:
+            // التعرّف على الكتابة على الجهاز يرهق المعالج والبطارية، والتوليد السحابي يستهلك الحد المجاني والتكلفة
+            if let last = self.lastOnlineRun[id],
                Date().timeIntervalSince(last) < 600, note.studySet != nil {
                 return
             }
@@ -54,7 +63,7 @@ final class StudyService: ObservableObject {
 
     /// عند فتح التطبيق: أحدث المذكرات التي تغيّرت ولم تُحدَّث مراجعتها.
     func sweep() {
-        guard ReviewSettings.autoGenerate else { return }
+        guard ReviewSettings.autoGenerate, Self.deviceAllowsAutoWork else { return }
         let request = CDNote.liveRequest()
         request.sortDescriptors = [NSSortDescriptor(key: "updatedAt", ascending: false)]
         request.fetchLimit = 8
@@ -84,9 +93,11 @@ final class StudyService: ObservableObject {
     }
 
     private func run(_ id: NSManagedObjectID) async {
-        guard let note = try? context.existingObject(with: id) as? CDNote, note.isAlive,
-              let read = NoteContentReader.prepare(note, context: context) else { return }
+        lastOnlineRun[id] = Date()
+        guard let note = try? context.existingObject(with: id) as? CDNote, note.isAlive else { return }
+        // البصمة قبل اللقطات: لو تغيّرت المذكرة أثناء القراءة تبقى المراجعة «قديمة» فتُحدَّث لاحقاً
         let signature = note.contentSignature
+        guard let read = await NoteContentReader.prepare(note, context: context) else { return }
         let provider = ReviewSettings.activeProvider
         var notice: String?
         var result: StudySet
@@ -94,7 +105,6 @@ final class StudyService: ObservableObject {
         if provider != .onDevice {
             let name = provider == .gemini ? "Gemini" : "Claude"
             working[id] = "\(name) يقرأ المذكرة…"
-            lastOnlineRun[id] = Date()
             let content = await background { read(.textAndImages) }
             do {
                 switch provider {

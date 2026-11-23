@@ -192,7 +192,7 @@ struct EditorView: View {
             appState.hideStatusBar = false
             controller.stopRecordingIfNeeded()
             controller.stopReplay()
-            controller.flush()
+            controller.editorDidClose()
             EditorActivity.setOpen(note.objectID, false)
             // المذكرة تغيّرت؟ نجهّز بطاقات الحفظ والكويز في الخلفية
             StudyService.shared.noteDidChange(note)

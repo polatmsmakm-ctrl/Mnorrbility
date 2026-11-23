@@ -109,10 +109,17 @@ private struct PageThumbnailCell: View {
         }
         .task(id: renderKey) {
             guard page.isAlive else { return }
-            let snapshot = controller.snapshot(of: page, dark: controller.contentDark)
-            let rendered = await Task.detached(priority: .userInitiated) {
-                PageRenderer.image(for: snapshot, targetWidth: 200, scale: 2)
-            }.value
+            // عبر الذاكرة المؤقتة وبحد عمليتين معاً: كان التمرير السريع في مذكرة كبيرة يطلق مئات الرسوم المتوازية
+            let key = "page|\(renderKey)|\(controller.contentDark)|\(controller.theme.rawValue)"
+            if let cached = ThumbnailCache.shared.cachedImage(forKey: key) {
+                image = cached
+                return
+            }
+            let rendered: UIImage? = await withCheckedContinuation { continuation in
+                ThumbnailCache.shared.render(key: key, width: 200, snapshot: {
+                    controller.snapshot(of: page, dark: controller.contentDark)
+                }) { continuation.resume(returning: $0) }
+            }
             image = rendered
         }
     }

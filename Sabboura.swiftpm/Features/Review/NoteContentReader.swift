@@ -57,12 +57,15 @@ enum NoteContentReader {
 
     /// يُستدعى على الخيط الرئيسي ويرجع عملية تُنفَّذ في الخلفية.
     @MainActor
-    static func prepare(_ note: CDNote, context: NSManagedObjectContext) -> ((Mode) -> NoteContent)? {
+    static func prepare(_ note: CDNote, context: NSManagedObjectContext) async -> ((Mode) -> NoteContent)? {
         guard note.isAlive else { return nil }
         let title = note.displayTitle
         var sources: [PageSource] = []
         var pdfData: [UUID: Data] = [:]
         for (offset, page) in note.sortedPages.enumerated() where page.isAlive {
+            // نترك الواجهة تتنفس بين الصفحات بدل تجميدها طوال لقطات المذكرة كاملة
+            await Task.yield()
+            guard note.isAlive, page.isAlive else { return nil }
             let snapshot = PageSnapshot.make(for: page, context: context, dark: false, theme: .classic)
             let items = page.items
             let typed = items.filter { $0.kind == .text }
@@ -95,6 +98,8 @@ enum NoteContentReader {
         var pages: [ReadPage] = []
 
         for source in sources {
+            // كل صفحة في حوض ذاكرة خاص: صور الحبر وVision تُحرَّر فوراً بدل أن تتراكم حتى نهاية القراءة
+            autoreleasepool {
             var parts: [String] = []
             if !source.typedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 parts.append(source.typedText)
@@ -141,6 +146,7 @@ enum NoteContentReader {
             pages.append(ReadPage(number: source.number,
                                   text: parts.joined(separator: "\n"),
                                   imageJPEG: imageJPEG))
+            }
         }
         return NoteContent(title: title, pages: pages)
     }
@@ -180,7 +186,7 @@ enum NoteContentReader {
     /// صفحة PDF وحدها (بدون الحبر) — للصفحات الممسوحة ضوئياً.
     private static func backgroundImage(_ snapshot: PageSnapshot) -> CGImage? {
         let bare = PageSnapshot(size: snapshot.size, background: snapshot.background, pdfPage: snapshot.pdfPage,
-                                drawingData: nil, items: [], images: [:])
+                                drawingData: nil, items: [], images: [:], pdfDocument: snapshot.pdfDocument)
         return PageRenderer.image(for: bare, targetWidth: 1500, scale: 1).cgImage
     }
 
@@ -216,6 +222,10 @@ enum NoteContentReader {
 enum TextRecognizer {
     /// يتعرّف على النص العربي والإنجليزي (المطبوع وخط اليد بقدر الإمكان).
     static func recognize(_ image: CGImage) -> String {
+        autoreleasepool { recognizeOnce(image) }
+    }
+
+    private static func recognizeOnce(_ image: CGImage) -> String {
         let request = VNRecognizeTextRequest()
         request.recognitionLevel = .accurate
         request.usesLanguageCorrection = true

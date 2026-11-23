@@ -278,6 +278,8 @@ struct PageSnapshot {
     var images: [UUID: UIImage] = [:]
     /// صورة حبر جاهزة (تُرسم على الخيط الرئيسي قبل التصدير) تُستعمل بدل إعادة الرسم في الخلفية.
     var prerenderedInk: UIImage?
+    /// يُبقي مستند PDF حياً ما دامت الصفحة مستخدمة: CGPDFPage لا يحتفظ بمستنده، والذاكرة المؤقتة قد تُخلي المستند
+    var pdfDocument: CGPDFDocument? = nil
 
     /// صورة الحبر فقط بخلفية شفافة. في الوضع الداكن يحوّل PencilKit ألوان الحبر تلقائياً.
     func drawingImage(scale: CGFloat) -> UIImage? {
@@ -377,8 +379,22 @@ enum EditorActivity {
 final class ThumbnailCache {
     static let shared = ThumbnailCache()
 
-    private let cache = NSCache<NSString, UIImage>()
-    private let queue = DispatchQueue(label: "sabboura.thumbnails", qos: .userInitiated, attributes: .concurrent)
+    private let cache: NSCache<NSString, UIImage> = {
+        let cache = NSCache<NSString, UIImage>()
+        cache.countLimit = 300
+        cache.totalCostLimit = 80 * 1024 * 1024
+        return cache
+    }()
+    /// رسم المصغّرات بحد أقصى عمليتين معاً (كان بلا حد فتتراكم عشرات الرسوم في الخلفية وترتفع الحرارة)
+    private let queue: OperationQueue = {
+        let queue = OperationQueue()
+        queue.name = "sabboura.thumbnails"
+        queue.qualityOfService = .userInitiated
+        queue.maxConcurrentOperationCount = 2
+        return queue
+    }()
+    /// طلبات مكررة لنفس المصغّرة تنتظر نتيجة واحدة (يُلمس من الخيط الرئيسي فقط)
+    private var waiting: [NSString: [(UIImage?) -> Void]] = [:]
 
     private func key(_ note: CDNote, dark: Bool, theme: AppTheme) -> NSString {
         let stamp = note.updatedAt?.timeIntervalSince1970 ?? 0
@@ -402,11 +418,43 @@ final class ThumbnailCache {
             completion(cached)
             return
         }
-        let snapshot = PageSnapshot.make(for: page, context: context, dark: dark, theme: theme)
-        queue.async {
-            let image = PageRenderer.image(for: snapshot, targetWidth: width, scale: 2)
-            self.cache.setObject(image, forKey: cacheKey)
-            DispatchQueue.main.async { completion(image) }
+        enqueue(cacheKey, width: width, completion: completion) {
+            PageSnapshot.make(for: page, context: context, dark: dark, theme: theme)
+        }
+    }
+
+    func cachedImage(forKey key: String) -> UIImage? {
+        cache.object(forKey: key as NSString)
+    }
+
+    /// مصغّرة صفحة واحدة (نظرة عامة على الصفحات) عبر نفس الطابور المحدود والذاكرة المؤقتة.
+    func render(key: String, width: CGFloat, snapshot makeSnapshot: () -> PageSnapshot,
+                completion: @escaping (UIImage?) -> Void) {
+        let cacheKey = key as NSString
+        if let cached = cache.object(forKey: cacheKey) {
+            completion(cached)
+            return
+        }
+        enqueue(cacheKey, width: width, completion: completion, snapshot: makeSnapshot)
+    }
+
+    /// يُستدعى على الخيط الرئيسي. اللقطة تُؤخذ هنا (تقرأ Core Data) والرسم في الطابور.
+    private func enqueue(_ cacheKey: NSString, width: CGFloat, completion: @escaping (UIImage?) -> Void,
+                         snapshot makeSnapshot: () -> PageSnapshot) {
+        if waiting[cacheKey] != nil {
+            waiting[cacheKey]?.append(completion)
+            return
+        }
+        waiting[cacheKey] = [completion]
+        let snapshot = makeSnapshot()
+        queue.addOperation { [weak self] in
+            let image = autoreleasepool { PageRenderer.image(for: snapshot, targetWidth: width, scale: 2) }
+            let cost = Int(image.size.width * image.size.height * image.scale * image.scale * 4)
+            self?.cache.setObject(image, forKey: cacheKey, cost: cost)
+            DispatchQueue.main.async {
+                let callbacks = self?.waiting.removeValue(forKey: cacheKey) ?? [completion]
+                for callback in callbacks { callback(image) }
+            }
         }
     }
 }
@@ -422,31 +470,42 @@ extension PageSnapshot {
                 images[id] = image
             }
         }
+        let pdf = PDFSourceCache.shared.pageAndDocument(for: page, context: context)
         return PageSnapshot(size: page.pageSize,
                             background: page.backgroundConfig.themed(dark: dark, theme: theme),
-                            pdfPage: PDFSourceCache.shared.page(for: page, context: context),
+                            pdfPage: pdf?.page,
                             drawingData: overrideData ?? (page.isAlive ? page.drawingData : nil),
                             items: items,
-                            images: images)
+                            images: images,
+                            pdfDocument: pdf?.document)
     }
 }
 
 /// ذاكرة مؤقتة لصور العناصر (محفوظة كمرفقات).
 final class ImageStore {
     static let shared = ImageStore()
-    private let cache = NSCache<NSUUID, UIImage>()
+    private let cache: NSCache<NSUUID, UIImage> = {
+        let cache = NSCache<NSUUID, UIImage>()
+        cache.countLimit = 60
+        cache.totalCostLimit = 96 * 1024 * 1024
+        return cache
+    }()
+
+    private static func cost(of image: UIImage) -> Int {
+        Int(image.size.width * image.size.height * image.scale * image.scale * 4)
+    }
 
     func image(for id: UUID, context: NSManagedObjectContext) -> UIImage? {
         if let cached = cache.object(forKey: id as NSUUID) { return cached }
         guard let attachment = DataStore.attachment(with: id, in: context),
               let data = attachment.data,
               let image = UIImage(data: data) else { return nil }
-        cache.setObject(image, forKey: id as NSUUID)
+        cache.setObject(image, forKey: id as NSUUID, cost: Self.cost(of: image))
         return image
     }
 
     func store(_ image: UIImage, for id: UUID) {
-        cache.setObject(image, forKey: id as NSUUID)
+        cache.setObject(image, forKey: id as NSUUID, cost: Self.cost(of: image))
     }
 }
 

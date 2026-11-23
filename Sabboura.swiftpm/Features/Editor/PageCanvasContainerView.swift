@@ -203,6 +203,28 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
         set { }
     }
 
+    /// سجل التراجع كان بلا حد: كل خطوة (شكل مضبوط، ترتيب، ممحاة) تحتفظ بنسخة كاملة من الرسم فتكبر الذاكرة مع الوقت.
+    /// `canvas.undoManager` يكون nil قبل دخول العرض في نافذة، لذلك يُطبَّق الحد أيضاً عند دخول النافذة وعند كل استبدال.
+    private func limitUndoHistory() {
+        if let manager = canvas.undoManager, manager.levelsOfUndo != 60 { manager.levelsOfUndo = 60 }
+    }
+
+    /// مدير التراجع يخص النافذة ويبقى بعد إغلاق المحرر؛ نحتفظ بمرجع ضعيف له لنفرّغه عند الإغلاق
+    private weak var attachedUndoManager: UndoManager?
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if window != nil {
+            limitUndoHistory()
+            attachedUndoManager = canvas.undoManager
+        }
+    }
+
+    /// يُستدعى عند إغلاق المحرر: خطوات التراجع تحتفظ بنسخ كاملة من الرسم وبهذا العرض نفسه، فتبقى في الذاكرة بعد الخروج.
+    func discardUndoHistory() {
+        (canvas.undoManager ?? attachedUndoManager)?.removeAllActions()
+    }
+
     // MARK: عرض الصفحات
 
     /// يعرض الصفحات مع رسمها المجمّع (إحداثيات اللوحة).
@@ -219,6 +241,7 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
         canvas.drawing = drawing
         lastStrokeCount = drawing.strokes.count
         canvas.undoManager?.removeAllActions()
+        limitUndoHistory()
         isLoading = false
         pendingScrollPage = scrollToPage
         lastReportedPage = -1
@@ -349,6 +372,7 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
         lastStrokeCount = newDrawing.strokes.count
         isReplacing = false
         if let undoManager = canvas.undoManager {
+            if undoManager.levelsOfUndo != 60 { undoManager.levelsOfUndo = 60 }
             undoManager.registerUndo(withTarget: self) { target in
                 target.replaceDrawing(oldDrawing, actionName: actionName)
             }
@@ -498,8 +522,9 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
         let visibleHeight = canvas.bounds.height - canvas.contentInset.top - bottomInset
         let centerY = (visibleTop + visibleHeight * 0.4) / zoom
         var best = pages[0]
-        for page in pages where page.originY - Self.pageGap / 2 <= centerY {
+        for page in pages.reversed() where page.originY - Self.pageGap / 2 <= centerY {
             best = page
+            break
         }
         if best.index != lastReportedPage {
             lastReportedPage = best.index
