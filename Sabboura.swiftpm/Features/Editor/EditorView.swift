@@ -26,6 +26,8 @@ struct EditorView: View {
     @State private var confirmDeletePage = false
     @State private var showStudy = false
     @State private var showChat = false
+    /// ارتفاع شريط الحالة الظاهر فعلاً (قد يظهر في iPadOS رغم طلب إخفائه، مثلاً حين يعمل التطبيق في نافذة)
+    @State private var statusBarHeight: CGFloat = 0
 
     init(note: CDNote) {
         self.note = note
@@ -38,32 +40,39 @@ struct EditorView: View {
     // الشريط يطفو فوق الصفحة (مثل نوتبلتي)؛ هوامش اللوحة ثابتة حتى لا تقفز الصفحة عند تغيير مكانه
     var body: some View {
         GeometryReader { proxy in
+            // الجزء من شريط الحالة الذي لا يحسبه SwiftUI ضمن الهوامش: ننزل الأزرار تحته
+            // حتى لا تقع لمسة زر الرجوع على شريط الحالة نفسه
+            let statusOverlap = max(0, statusBarHeight - proxy.safeAreaInsets.top)
             ZStack(alignment: .top) {
                 CanvasRepresentable(controller: controller,
-                                    topInset: toolbarHeight + proxy.safeAreaInsets.top,
+                                    topInset: toolbarHeight + proxy.safeAreaInsets.top + statusOverlap,
                                     bottomInset: 20 + proxy.safeAreaInsets.bottom)
                     .environment(\.layoutDirection, .leftToRight)
                     .ignoresSafeArea()
 
                 // شريط رفيع خلف منطقة الساعة حتى لا تظهر الكتابة تحتها عند التمرير
                 theme.desk
-                    .frame(height: proxy.safeAreaInsets.top)
+                    .frame(height: proxy.safeAreaInsets.top + statusOverlap)
                     .offset(y: -proxy.safeAreaInsets.top)
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
 
                 chrome
+                    .padding(.top, statusOverlap)
 
                 if isPad {
                     DockableToolbarLayer(controller: controller,
-                                         area: proxy.size,
+                                         area: CGSize(width: proxy.size.width,
+                                                      height: max(0, proxy.size.height - statusOverlap)),
                                          onInsertImage: { showPhotoPicker = true },
                                          onTakePhoto: { takePhoto() },
                                          onImageFromFiles: { imageFromFiles() },
                                          onImportPDF: { importPDF() },
                                          onImportFile: { importFile() })
+                        .padding(.top, statusOverlap)
                 }
             }
+            .background(StatusBarHeightReader(height: $statusBarHeight))
             .coordinateSpace(name: "editorArea")
         }
         .overlay(alignment: .bottomTrailing) {
@@ -762,5 +771,60 @@ struct ReplayBar: View {
         .shadow(color: .black.opacity(0.18), radius: 10, y: 4)
         .environment(\.layoutDirection, .rightToLeft)
         .accessibilityIdentifier("replayBar")
+    }
+}
+
+// MARK: - ارتفاع شريط الحالة الفعلي
+
+/// يقرأ ارتفاع شريط الحالة كما يظهر فعلاً على الشاشة.
+/// المحرر يطلب إخفاءه، لكن iPadOS قد يبقيه ظاهراً (مثلاً حين يعمل التطبيق في نافذة)،
+/// وعندها لا يدخل في هوامش SwiftUI فتقع الأزرار العلوية تحته وتذهب لمساتها لشريط الحالة.
+struct StatusBarHeightReader: UIViewRepresentable {
+    @Binding var height: CGFloat
+
+    func makeUIView(context: Context) -> ReaderView {
+        let view = ReaderView()
+        view.isUserInteractionEnabled = false
+        view.isHidden = true
+        view.onChange = { value in
+            if abs(height - value) > 0.5 { height = value }
+        }
+        return view
+    }
+
+    func updateUIView(_ uiView: ReaderView, context: Context) {
+        uiView.onChange = { value in
+            if abs(height - value) > 0.5 { height = value }
+        }
+    }
+
+    final class ReaderView: UIView {
+        var onChange: ((CGFloat) -> Void)?
+
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            scheduleCheck()
+        }
+
+        override func layoutSubviews() {
+            super.layoutSubviews()
+            scheduleCheck()
+        }
+
+        override func safeAreaInsetsDidChange() {
+            super.safeAreaInsetsDidChange()
+            scheduleCheck()
+        }
+
+        /// نقرأ بعد انتهاء الدورة الحالية، ومرة أخرى بعد حركة إظهار/إخفاء الشريط
+        func scheduleCheck() {
+            DispatchQueue.main.async { [weak self] in self?.check() }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in self?.check() }
+        }
+
+        private func check() {
+            guard let scene = window?.windowScene else { return }
+            onChange?(scene.statusBarManager?.statusBarFrame.height ?? 0)
+        }
     }
 }

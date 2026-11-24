@@ -122,6 +122,9 @@ final class PageCanvasContainerView: UIView, PKCanvasViewDelegate, UIPencilInter
         canvas.drawingPolicy = .anyInput
         canvas.bouncesZoom = true
         canvas.alwaysBounceVertical = true
+        // لمس شريط الحالة (الساعة) يقفز بالنظام إلى أول المذكرة؛ في مذكرة طويلة هذا يضيّع مكانك،
+        // ويحدث كثيراً عند محاولة الضغط على زر الرجوع القريب منه
+        canvas.scrollsToTop = false
         canvas.showsHorizontalScrollIndicator = false
         canvas.minimumZoomScale = 0.25
         canvas.maximumZoomScale = 6
